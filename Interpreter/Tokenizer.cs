@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 public enum TokenType
 {
-    DATATYPE, IDENTIFIER, NUMBER, STRING, CHARACTER, BOOL, OPERATOR, OPERATOR_ARITHMETIC, OPERATOR_LOGICAL, OPERATOR_UNARY, PUNCTUATION, COMMENT, NEWLINE, EOF, KEYWORD
+    DATATYPE, IDENTIFIER, NUMBER, STRING, CHARACTER, BOOL,
+    OPERATOR, OPERATOR_ARITHMETIC, OPERATOR_LOGICAL, OPERATOR_UNARY, 
+    PUNCTUATION, COMMENT, NEWLINE, EOF, KEYWORD, CODEBLOCK, IFBLOCK, WHILEBLOCK
 }
 
 public class Token
@@ -50,12 +53,12 @@ public class Lexer
                     _index++;
                     break;
 
-                case '+': // next line or carriage return
-                case '-': // next line or carriage return
-                case '*': // next line or carriage return
-                case '/': // next line or carriage return
-                case '%': // next line or carriage return
-                case '&': // next line or carriage return
+                case '+':
+                case '-':
+                case '*':
+                case '/':
+                case '%':
+                case '&':
                     tokens.Add(new Token(TokenType.OPERATOR, currentChar.ToString()));
                     _index++;
                     break;
@@ -164,19 +167,24 @@ public class Lexer
         string identifier = _code.Substring(start, _index - start);
 
         // Check if the identifier is a keyword
-        switch (identifier.ToUpper())
+        switch (identifier)
         {
-            case "BEGIN":
-            case "END":
-            case "CODE":
             case "IF":
             case "ELSE":
             case "DISPLAY":
             case "SCAN":
+                return new Token(TokenType.KEYWORD, identifier);
+
             case "AND":
             case "OR":
             case "NOT":
-                return new Token(TokenType.KEYWORD, identifier);
+                return new Token(TokenType.OPERATOR, identifier);
+
+            case "BEGIN":
+                return CheckNextWord(TokenType.CODEBLOCK, "BEGIN");
+
+            case "END":
+                return CheckNextWord(TokenType.CODEBLOCK, "END");
 
             case "INT":
             case "CHAR":
@@ -186,6 +194,41 @@ public class Lexer
 
             default:
                 return new Token(TokenType.IDENTIFIER, identifier);
+        }
+    }
+
+    private static Token CheckNextWord(TokenType tokenType, string firstWord)
+    {
+        while (!EndOfFile && char.IsWhiteSpace(CurrentChar))
+        {
+            _index++;
+        }
+
+        if (EndOfFile)
+        {
+            return new Token(TokenType.IDENTIFIER, tokenType.ToString());
+        }
+
+        int start = _index;
+        while (!EndOfFile && (char.IsLetterOrDigit(CurrentChar) || CurrentChar == '_'))
+        {
+            _index++;
+        }
+        string nextWord = _code.Substring(start, _index - start);
+
+        switch (nextWord.ToUpper())
+        {
+            case "CODE":
+                return new Token(TokenType.CODEBLOCK, firstWord + " " + nextWord);
+
+            case "IF":
+                return new Token(TokenType.IFBLOCK, firstWord + " " + nextWord);
+
+            case "WHILE":
+                return new Token(TokenType.WHILEBLOCK, firstWord + " " + nextWord);
+
+            default:
+                throw new Exception($"Unidentified {firstWord} statement.");
         }
     }
 
@@ -203,17 +246,38 @@ public class Lexer
     private static Token ScanEscape()
     {
         int start = _index;
-        _index++;
-        while (!EndOfFile && CurrentChar != ']')
+        int lastClosedBracket = -1;
+
+        while (!EndOfFile)
         {
+            if (CurrentChar == '[')
+            {
+                // If a new opening bracket is encountered, terminate the escape sequence
+                if (lastClosedBracket != -1)
+                {
+                    _index = lastClosedBracket+1;
+                    break;
+                }
+            }
+            else if (CurrentChar == ']')
+            {
+                lastClosedBracket = _index; // Update the index of the last closed bracket
+            }
+
             _index++;
+
+            if (EndOfFile && lastClosedBracket != -1)
+            {
+                break;
+            }
         }
-        if (EndOfFile)
+
+        if (lastClosedBracket == -1)
         {
             throw new ArgumentException("Unterminated escape code");
         }
-        _index++;
-        string str = _code.Substring(start+1, _index - start-2);
+
+        string str = _code.Substring(start + 1, lastClosedBracket - start - 1);
         return new Token(TokenType.STRING, str);
     }
 

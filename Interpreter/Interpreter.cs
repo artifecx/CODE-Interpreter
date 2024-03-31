@@ -13,24 +13,11 @@ namespace Interpreter
             switch (code)
             {
                 case 1:
-                    return @"cars = [""Orange"", ""Siamese"", ""Bengal""]
-	                    a = cars[0]
-	                    output(a)
-
-                        cars[0] = 'Mawa'
-	                    for(i = 0; i < length(cars); i++){
-		                   output(cars[i]).sameline(' ')
-	                    }
-                    
-                        cars.add('Yasha')
-	                    output(cars[length(cars)-1])
-
-	                    cars.pop(1)
-	                    cars.remove('Bengal')
-	                    for(i = 0; i < length(cars); i++){
-		                    output(cars[i]).sameline(',')
-	                    }
-                    ";
+                    return @"BEGIN CODE
+                                INT xyz, abc=100
+                                xyz= ((abc *5)/10 + 10) * -1
+                                DISPLAY: [[] & xyz & []]
+                             END CODE";
                 case 2:
                     return @"BEGIN CODE
                                 INT x, y, z=5
@@ -42,11 +29,12 @@ namespace Interpreter
                                 DISPLAY: x & t & z & $ & a_1 & [#] & ""last""
                              END CODE";
                 case 3:
-                    return @"a = 6
-                        b = 9
-                        c = ((a*b)+(b/a)*(a+7.5)+a) * -1
-                        output([ [ ] c [ ] ])
-                        ";
+                    return @"BEGIN CODE
+                                INT a=100, b=200, c=300
+                                BOOL d=""FALSE""
+                                d = (a < b AND c <> 200)
+                                DISPLAY: d
+                             END CODE";
                 default:
                     return "invalid choice";
             }
@@ -54,7 +42,7 @@ namespace Interpreter
 
         static void Main(string[] args)
         {
-            string inputCode = Code(2);
+            string inputCode = Code(1);
             List<Token> tokens = Lexer.Tokenize(inputCode);
             foreach (Token token in tokens)
             {
