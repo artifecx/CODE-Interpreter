@@ -41,6 +41,17 @@ namespace Interpreter
                                 c = (-a + 1) * -2
                                 DISPLAY: c
                              END CODE";
+                case 5:
+                    return @"BEGIN CODE
+                                INT a=100, b=200
+                                FLOAT c = 4.2
+                                IF (a < b)
+                                BEGIN IF
+                                    a = b
+                                END IF
+                                # comment should not appear in console
+                                ""][""
+                             END CODE";
                 default:
                     return "invalid choice";
             }
@@ -48,31 +59,11 @@ namespace Interpreter
 
         static void Main(string[] args)
         {
-            string inputCode = Code(1);
+            string inputCode = Code(5);
             List<Token> tokens = Lexer.Tokenize(inputCode);
             foreach (Token token in tokens)
             {
                 Console.WriteLine($"{token.Type}: {token.Value}");
-            }
-
-
-            // Create a parser instance
-            //Parser parser = new Parser(tokens);
-
-            // Parse the code
-            //ASTNode rootNode = parser.Parse();
-
-            // Display the AST (for demonstration)
-            //DisplayAST(rootNode);
-        }
-
-        static void DisplayAST(ASTNode node)
-        {
-            Console.WriteLine($"Type: {node.Type}, Value: {node.Value}");
-
-            foreach (var child in node.Children)
-            {
-                DisplayAST(child);
             }
         }
     }
