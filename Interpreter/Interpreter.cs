@@ -35,6 +35,12 @@ namespace Interpreter
                                 d = (a < b AND c <> 200)
                                 DISPLAY: d
                              END CODE";
+                case 4:
+                    return @"BEGIN CODE
+                                INT a=100, b=200, c=300
+                                c = (-a + 1) * -2
+                                DISPLAY: c
+                             END CODE";
                 default:
                     return "invalid choice";
             }

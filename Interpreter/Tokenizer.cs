@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 public enum TokenType
 {
-    DATATYPE, IDENTIFIER, NUMBER, STRING, CHARACTER, BOOL,
-    OPERATOR, OPERATOR_ARITHMETIC, OPERATOR_LOGICAL, OPERATOR_UNARY, 
-    PUNCTUATION, COMMENT, NEWLINE, EOF, KEYWORD, CODEBLOCK, IFBLOCK, WHILEBLOCK
+    DATATYPE, IDENTIFIER, KEYWORD, PUNCTUATION, COMMENT,
+    NUMBER, STRING, CHARACTER, BOOL,
+    OPERATOR, OPERATOR_ARITHMETIC, OPERATOR_LOGICAL, OPERATOR_UNARY,
+    CODEBLOCK, IFBLOCK, WHILEBLOCK,
+    NEWLINE, EOF,
 }
 
 public class Token
@@ -25,10 +25,7 @@ public class Token
 public class Lexer
 {
     private static int _index = 0;
-    private static string _code;
-
-    private static char CurrentChar => _code[_index];
-    private static bool EndOfFile => _index >= _code.Length;
+    private static string? _code;
 
     public static List<Token> Tokenize(string code)
     {
@@ -36,7 +33,7 @@ public class Lexer
         _index = 0;
         var tokens = new List<Token>();
 
-        while (!EndOfFile)
+        while (_index < _code.Length)
         {
             char currentChar = CurrentChar;
 
@@ -44,6 +41,11 @@ public class Lexer
             {
                 case '\n':
                     tokens.Add(new Token(TokenType.NEWLINE, "\\n"));
+                    _index++;
+                    break;
+
+                case '$':
+                    tokens.Add(new Token(TokenType.NEWLINE, "$"));
                     _index++;
                     break;
 
@@ -58,64 +60,60 @@ public class Lexer
                 case '*':
                 case '/':
                 case '%':
+                    tokens.Add(IsUnaryOperator(tokens) ? new Token(TokenType.OPERATOR_UNARY, currentChar.ToString()) : new Token(TokenType.OPERATOR_ARITHMETIC, currentChar.ToString()));
+                    _index++;
+                    break;
+
                 case '&':
                     tokens.Add(new Token(TokenType.OPERATOR, currentChar.ToString()));
                     _index++;
                     break;
 
                 case '<':
-                    if (!EndOfFile && _code[_index + 1] == '=')
-                    {
-                        tokens.Add(new Token(TokenType.OPERATOR, "<="));
-                        _index += 2;
-                    }
-                    else if(!EndOfFile && _code[_index + 1] == '>')
-                    {
-                        tokens.Add(new Token(TokenType.OPERATOR, "<>"));
-                        _index += 2;
-                    }
-                    else
-                    {
-                        tokens.Add(new Token(TokenType.OPERATOR, "<"));
-                        _index++;
-                    }
-                    break;
-
                 case '>':
-                    if (!EndOfFile && _code[_index + 1] == '=')
+                    TokenType operatorType = TokenType.OPERATOR_ARITHMETIC;
+
+                    if (currentChar == '<' && PeekChar(1) == '=')
                     {
-                        tokens.Add(new Token(TokenType.OPERATOR, ">="));
+                        tokens.Add(new Token(operatorType, "<="));
+                        _index += 2;
+                    }
+                    else if (currentChar == '>' && PeekChar(1) == '=')
+                    {
+                        tokens.Add(new Token(operatorType, ">="));
+                        _index += 2;
+                    }
+                    else if (PeekChar(1) == '>')
+                    {
+                        tokens.Add(new Token(operatorType, "<>"));
                         _index += 2;
                     }
                     else
                     {
-                        tokens.Add(new Token(TokenType.OPERATOR, ">"));
+                        tokens.Add(new Token(operatorType, currentChar.ToString()));
                         _index++;
                     }
                     break;
 
                 case '=':
-                    if (!EndOfFile && _code[_index + 1] == '=')
+                    TokenType eqOperatorType = TokenType.OPERATOR;
+
+                    if (PeekChar(1) == '=')
                     {
-                        tokens.Add(new Token(TokenType.OPERATOR, "=="));
+                        tokens.Add(new Token(TokenType.OPERATOR_ARITHMETIC, "=="));
                         _index += 2;
                     }
                     else
                     {
-                        tokens.Add(new Token(TokenType.OPERATOR, "="));
+                        tokens.Add(new Token(eqOperatorType, "="));
                         _index++;
                     }
                     break;
 
                 case '(':
                 case ')':
-                case '{':
-                case '}':
                 case ',':
-                case '.':
-                case ';':
                 case ':':
-                case '$':
                     tokens.Add(new Token(TokenType.PUNCTUATION, currentChar.ToString()));
                     _index++;
                     break;
@@ -157,14 +155,56 @@ public class Lexer
         return tokens;
     }
 
+    private static bool IsUnaryOperator(List<Token> tokens)
+    {
+        if (_index == 0)
+        {
+            return true;
+        }
+
+        Token previousToken = tokens[^1];
+        if (previousToken.Type == TokenType.PUNCTUATION && previousToken.Value == "(")
+        {
+            return true;
+        }
+        else if (previousToken.Type == TokenType.OPERATOR_ARITHMETIC || previousToken.Type == TokenType.OPERATOR_LOGICAL)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static char CurrentChar =>  _code != null ? _code[_index] : throw new InvalidOperationException("_code is null");
+
+    private static char PeekChar(int offset)
+    {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
+        int peekIndex = _index + offset;
+        if (peekIndex < 0 || peekIndex >= _code.Length)
+        {
+            return '\0';
+        }
+        return _code[peekIndex];
+    }
+
     private static Token ScanIdentifierOrKeyword()
     {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
         int start = _index;
-        while (!EndOfFile && (char.IsLetterOrDigit(CurrentChar) || CurrentChar == '_'))
+        while (_index < _code.Length && (char.IsLetterOrDigit(CurrentChar) || CurrentChar == '_'))
         {
             _index++;
         }
-        string identifier = _code.Substring(start, _index - start);
+        string identifier = _code[start.._index].ToString();
 
         // Check if the identifier is a keyword
         switch (identifier)
@@ -178,7 +218,7 @@ public class Lexer
             case "AND":
             case "OR":
             case "NOT":
-                return new Token(TokenType.OPERATOR, identifier);
+                return new Token(TokenType.OPERATOR_LOGICAL, identifier);
 
             case "BEGIN":
                 return CheckNextWord(TokenType.CODEBLOCK, "BEGIN");
@@ -199,22 +239,27 @@ public class Lexer
 
     private static Token CheckNextWord(TokenType tokenType, string firstWord)
     {
-        while (!EndOfFile && char.IsWhiteSpace(CurrentChar))
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
+        while (_index < _code.Length && char.IsWhiteSpace(CurrentChar))
         {
             _index++;
         }
 
-        if (EndOfFile)
+        if (_index == _code.Length)
         {
             return new Token(TokenType.IDENTIFIER, tokenType.ToString());
         }
 
         int start = _index;
-        while (!EndOfFile && (char.IsLetterOrDigit(CurrentChar) || CurrentChar == '_'))
+        while (_index < _code.Length && (char.IsLetterOrDigit(CurrentChar) || CurrentChar == '_'))
         {
             _index++;
         }
-        string nextWord = _code.Substring(start, _index - start);
+        string nextWord = _code[start.._index].ToString();
 
         switch (nextWord.ToUpper())
         {
@@ -234,28 +279,38 @@ public class Lexer
 
     private static Token ScanNumber()
     {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
         int start = _index;
-        while (!EndOfFile && (char.IsDigit(CurrentChar) || CurrentChar == '.'))
+        while (_index < _code.Length && (char.IsDigit(CurrentChar) || CurrentChar == '.'))
         {
             _index++;
         }
-        string number = _code.Substring(start, _index - start);
+        string number = _code[start.._index].ToString();
         return new Token(TokenType.NUMBER, number);
     }
 
     private static Token ScanEscape()
     {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
         int start = _index;
         int lastClosedBracket = -1;
 
-        while (!EndOfFile)
+        while (_index < _code.Length)
         {
             if (CurrentChar == '[')
             {
                 // If a new opening bracket is encountered, terminate the escape sequence
                 if (lastClosedBracket != -1)
                 {
-                    _index = lastClosedBracket+1;
+                    _index = lastClosedBracket + 1;
                     break;
                 }
             }
@@ -266,7 +321,7 @@ public class Lexer
 
             _index++;
 
-            if (EndOfFile && lastClosedBracket != -1)
+            if (_index == _code.Length && lastClosedBracket != -1)
             {
                 break;
             }
@@ -277,53 +332,68 @@ public class Lexer
             throw new ArgumentException("Unterminated escape code");
         }
 
-        string str = _code.Substring(start + 1, lastClosedBracket - start - 1);
+        string str = _code[(start + 1)..lastClosedBracket].ToString();
         return new Token(TokenType.STRING, str);
     }
 
     private static Token ScanString()
     {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
         int start = _index;
         _index++;
-        while (!EndOfFile && CurrentChar != '"')
+        while (_index < _code.Length && CurrentChar != '"')
         {
             _index++;
         }
-        if (EndOfFile)
+        if (_index == _code.Length)
         {
             throw new ArgumentException("Unterminated string literal");
         }
         _index++;
-        string str = _code.Substring(start+1, _index - start-2);
+        string str = _code[(start + 1)..(_index - 1)].ToString();
         if (str.Contains("TRUE") || str.Contains("FALSE")) return new Token(TokenType.BOOL, str);
         return new Token(TokenType.STRING, str);
     }
 
     private static Token ScanCharacter()
     {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
         int start = _index;
-        _index++; // Skip the opening single quote
-        while (!EndOfFile && CurrentChar != '\'')
+        _index++;
+        while (_index < _code.Length && CurrentChar != '\'')
         {
             _index++;
         }
-        if (EndOfFile)
+        if (_index == _code.Length)
         {
             throw new ArgumentException("Unterminated character literal");
         }
-        _index++; // Skip the closing single quote
-        string character = _code.Substring(start+1, _index - start-2);
+        _index++;
+        string character = _code[(start + 1)..(_index - 1)].ToString();
         return new Token(TokenType.CHARACTER, character);
     }
 
     private static Token ScanComment()
     {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
         int start = _index;
-        while (!EndOfFile && CurrentChar != '\n')
+        while (_index < _code.Length && CurrentChar != '\n')
         {
             _index++;
         }
-        string comment = _code.Substring(start+1, _index - start);
+        string comment = _code[(start + 1).._index].ToString();
         return new Token(TokenType.COMMENT, comment);
     }
 }
