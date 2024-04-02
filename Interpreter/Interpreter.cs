@@ -67,7 +67,13 @@ namespace Interpreter
         {
             //Console.WriteLine("Enter the code number to execute: ");
             //string code = Code(choice);
-            string filePath = @"C:\Users\artifecx\source\repos\Interpreter\Interpreter\sample.code";
+            string str_directory = Environment.CurrentDirectory.ToString();
+            var projectfolder = Directory.GetParent(Directory.GetParent(Directory.GetParent(str_directory).ToString()).ToString());
+
+            string filename = @"sample.code";
+
+            // Combine the project folder path and the relative path
+            string filePath = Path.Combine(projectfolder.ToString(), filename);
 
             if (File.Exists(filePath))
             {
