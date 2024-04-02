@@ -132,8 +132,9 @@ public class Parser
                 expressions.Add(new LiteralExpression("\n"));
                 continue;
             }
+            
             expressions.Add(ParseExpression());
-        } while (!Check(TokenType.ENDCODE) && !IsAtEnd());
+        } while (!Check(TokenType.ENDCODE) && !IsAtEnd() && !Peek().Value.Contains("\\n"));
 
         return new OutputStatement(expressions);
     }
@@ -165,13 +166,15 @@ public class Parser
             Token equals = Previous();
             Expression value = ParseAssignment();
 
-            if (expr is VariableExpression varExpr)
+            if (expr is VariableExpression)
             {
-                string name = varExpr.Name;
-                return new AssignmentExpression(new Variable(name), value);
+                String name = ((VariableExpression)expr).Name;
+                return new AssignmentExpression(new Variable(name, null), value);
             }
-
-            throw new ParseException("Invalid assignment target.");
+            else
+            {
+                throw new ParseException("Invalid assignment target.");
+            }
         }
 
         return expr;
@@ -239,6 +242,10 @@ public class Parser
 
         while (Match(TokenType.ADD, TokenType.SUB, TokenType.CONCATENATE))
         {
+            /*if (Previous().Type == TokenType.CONCATENATE && Peek().Type == TokenType.NEXTLINE)
+            {
+                Advance();
+            }*/
             Token operatorToken = Previous();
             Expression right = ParseMultiplication();
             expr = new BinaryExpression(expr, operatorToken, right);

@@ -5,24 +5,18 @@ BEGIN CODE
     # Variable Declaration and Initialization DONE
     # Reserved words
     # DISPLAY function DONE
-
     # Increment 2
     # concatenation (&) DONE
     # next line ($) DONE
     # escape code ([]) DONE
     # SCAN function DONE
     # arithmetic operation
-
-    CHAR a
-    INT x = 5
-    INT y = 10
-    INT sum = x + y
-    BOOL b = "TRUE"
-    DISPLAY: b
-    DISPLAY: sum
-    #DISPLAY: "Enter a character: "
-    #SCAN: a
-    #DISPLAY: a
-    #DISPLAY: "Hello" $ "World"
-    # TODO: DONT COUNT COMMENTS AS NEW LINES, or skip over them
+    INT x, y, z=5
+    CHAR a_1='n'
+    BOOL t="TRUE"
+    x=y=4
+    a_1='c'
+    # this is a comment
+    DISPLAY: x & t & z & $ & a_1 & [#] & "last"
+    #DISPLAY: z & $ & a_1
 END CODE

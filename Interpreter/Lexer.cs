@@ -142,9 +142,20 @@ public class Lexer
                 case '%':
                 case '>':
                 case '<':
-                case '&':
                     tokens.Add(HandleOperator(currentChar, tokens));
                     _index +=  (currentChar == '=' || currentChar == '>' || currentChar == '<') && (PeekChar(1) == '=' || PeekChar(1) == '>') ? 2 : 1;
+                    break;
+
+                case '&':
+                    if(ScanNextAndPrev()) // do not read & - added to handle & $ &, & $, $ &
+                    {
+                        _index++;
+                    }
+                    else
+                    {
+                        tokens.Add(HandleOperator(currentChar, tokens));
+                        _index++;
+                    }
                     break;
 
                 #endregion OPERATORS
@@ -205,7 +216,6 @@ public class Lexer
     }
 
     #region HELPER METHODS
-
     private static char CurrentChar => _code != null ? _code[_index] : throw new InvalidOperationException("_code is null");
 
     private static Token HandleOperator(char currentChar, List<Token> _tokens)
@@ -333,6 +343,11 @@ public class Lexer
         {
             _index++;
         }
+
+        if (_index < _code.Length && CurrentChar == '\n')
+    {
+        _index++;
+    }
     }
 
     private static Token ScanEscape()
@@ -449,6 +464,34 @@ public class Lexer
         string str = _code[(start + 1)..(_index - 1)].ToString();
         if (str.Contains("TRUE") || str.Contains("FALSE")) return str.Contains("TRUE") ? new Token(TokenType.TRUE, str)  : new Token(TokenType.FALSE, str);
         return new Token(TokenType.STRINGLITERAL, str);
+    }
+
+    private static bool ScanNextAndPrev()
+    {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
+        int peekIndexLeft = _index - 1;
+        int peekIndexRight = _index + 1;
+
+        while (peekIndexLeft >= 0 && char.IsWhiteSpace(_code[peekIndexLeft]))
+        {
+            peekIndexLeft--;
+        }
+
+        while (peekIndexRight < _code.Length && char.IsWhiteSpace(_code[peekIndexRight]))
+        {
+            peekIndexRight++;
+        }
+
+        if ((peekIndexLeft >= 0 && _code[peekIndexLeft] == '$') || (peekIndexRight < _code.Length && _code[peekIndexRight] == '$'))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private static Token CheckNextWord(TokenType tokenType, string firstWord)

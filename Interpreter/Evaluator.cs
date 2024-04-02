@@ -153,6 +153,10 @@ namespace Interpreter
                     var leftLogic = EvaluateExpression(logExpr.Left);
                     var rightLogic = EvaluateExpression(logExpr.Right);
                     return EvaluateLogicalExpression(leftLogic, logExpr.Operator, rightLogic);
+                case AssignmentExpression assignExpr:
+                    var value = EvaluateExpression(assignExpr.Value);
+                    context.SetVariable(assignExpr.Variable.Name, value);
+                    return value;
                 default:
                     throw new NotImplementedException($"Evaluation not implemented for expression type {expression.GetType().Name}");
             }
