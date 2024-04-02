@@ -104,6 +104,8 @@ public class Lexer
         {"CHAR", TokenType.CHAR},
         {"BOOL", TokenType.BOOL},
         {"FLOAT", TokenType.FLOAT},
+        {"TRUE", TokenType.TRUE},
+        {"FALSE", TokenType.FALSE},
 
         {"AND", TokenType.AND},
         {"OR", TokenType.OR},

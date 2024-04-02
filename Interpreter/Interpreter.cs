@@ -85,7 +85,7 @@ namespace Interpreter
                 var interpreter = new Interpreter();
                 interpreter.Interpret(ast);
 
-                Console.WriteLine("Program executed successfully.");
+                Console.WriteLine("\nProgram executed successfully.");
             }
             else
             {

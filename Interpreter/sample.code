@@ -1,9 +1,9 @@
 BEGIN CODE
     # Increment 1
-    # Basic Program Structure (BEGIN CODE END CODE block)
+    # Basic Program Structure (BEGIN CODE END CODE block) DONE
     # Comments DONE
     # Variable Declaration and Initialization DONE
-    # Reserved words
+    # Reserved words DONE
     # DISPLAY function DONE
     # Increment 2
     # concatenation (&) DONE
@@ -18,5 +18,4 @@ BEGIN CODE
     a_1='c'
     # this is a comment
     DISPLAY: x & t & z & $ & a_1 & [#] & "last"
-    #DISPLAY: z & $ & a_1
 END CODE

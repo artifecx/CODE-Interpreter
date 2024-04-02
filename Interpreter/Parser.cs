@@ -10,6 +10,27 @@ public class Parser
     public Parser(List<Token> tokens)
     {
         this.tokens = tokens;
+
+        EnsureProgramStructure();
+    }
+
+    private void EnsureProgramStructure()
+    {
+        if (tokens.Count < 2)
+        {
+            throw new ParseException("Incomplete program. Missing 'BEGIN CODE' and/or 'END CODE'.");
+        }
+
+        if (tokens[0].Type != TokenType.BEGINCODE)
+        {
+            throw new ParseException("Program must start with 'BEGIN CODE'.");
+        }
+
+        // Last token is EOF, second to last for ENDCODE
+        if (tokens[^2].Type != TokenType.ENDCODE)
+        {
+            throw new ParseException("Program must end with 'END CODE'.");
+        }
     }
 
     public ProgramNode Parse()
@@ -242,10 +263,6 @@ public class Parser
 
         while (Match(TokenType.ADD, TokenType.SUB, TokenType.CONCATENATE))
         {
-            /*if (Previous().Type == TokenType.CONCATENATE && Peek().Type == TokenType.NEXTLINE)
-            {
-                Advance();
-            }*/
             Token operatorToken = Previous();
             Expression right = ParseMultiplication();
             expr = new BinaryExpression(expr, operatorToken, right);
