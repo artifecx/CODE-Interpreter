@@ -43,8 +43,6 @@ public enum TokenType
     OR,                 // logical operator OR
     NOT,                // logical operator NOT
     CONCATENATE,        // &
-    POSITIVE,           // +2
-    NEGATIVE,           // -2
 
     // Delimiters
     NEXTLINE,           // \n, $
@@ -227,9 +225,9 @@ public class Lexer
             case '=':
                 return PeekChar(1) == '=' ? new Token(TokenType.EQUAL, "==") : new Token(TokenType.ASSIGNMENT, "=");
             case '+':
-                return IsUnaryOperator(_tokens) ? new Token(TokenType.POSITIVE, "+") : new Token(TokenType.ADD, "+");
+                return new Token(TokenType.ADD, "+");
             case '-':
-                return IsUnaryOperator(_tokens) ? new Token(TokenType.NEGATIVE, "-") : new Token(TokenType.SUB, "-");
+                return new Token(TokenType.SUB, "-");
             case '*':
                 return new Token(TokenType.MUL, "*");
             case '/':

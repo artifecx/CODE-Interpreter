@@ -149,6 +149,8 @@ namespace Interpreter
                     var left = EvaluateExpression(binExpr.Left);
                     var right = EvaluateExpression(binExpr.Right);
                     return EvaluateBinaryExpression(left, binExpr.Operator, right);
+                case UnaryExpression unaryExpr:
+                    return EvaluateUnaryExpression(unaryExpr);
                 case LogicalExpression logExpr:
                     var leftLogic = EvaluateExpression(logExpr.Left);
                     var rightLogic = EvaluateExpression(logExpr.Right);
@@ -157,6 +159,8 @@ namespace Interpreter
                     var value = EvaluateExpression(assignExpr.Value);
                     context.SetVariable(assignExpr.Variable.Name, value);
                     return value;
+                case GroupingExpression groupExpr:
+                    return EvaluateExpression(groupExpr.Expression);
                 default:
                     throw new NotImplementedException($"Evaluation not implemented for expression type {expression.GetType().Name}");
             }
@@ -170,29 +174,101 @@ namespace Interpreter
                 string rightStr = ConvertToString(right);
                 return leftStr + rightStr;
             }
-            else if (left is int leftInt && right is int rightInt)
+
+            left = ConvertIfString(left);
+            right = ConvertIfString(right);
+
+            left = left is VariableExpression leftVar ? context.GetVariable(leftVar.Name) : left;
+            right = right is VariableExpression rightVar ? context.GetVariable(rightVar.Name) : right;
+
+            bool isLeftFloat = left is float;
+            bool isRightFloat = right is float;
+
+            if (left is int && isRightFloat)
             {
-                return operatorToken.Type switch
-                {
-                    TokenType.ADD => leftInt + rightInt,
-                    TokenType.SUB => leftInt - rightInt,
-                    TokenType.MUL => leftInt * rightInt,
-                    TokenType.DIV => leftInt / rightInt,
-                    _ => throw new NotImplementedException($"Operator {operatorToken.Type} is not implemented.")
-                };
+                left = Convert.ToSingle(left);
             }
-            else if (left is float leftFloat && right is float rightFloat)
+            if (right is int && isLeftFloat)
             {
-                switch (operatorToken.Type)
-                {
-                    case TokenType.ADD: return leftFloat + rightFloat;
-                    case TokenType.SUB: return leftFloat - rightFloat;
-                    case TokenType.MUL: return leftFloat * rightFloat;
-                    case TokenType.DIV: return leftFloat / rightFloat;
-                }
+                right = Convert.ToSingle(right);
             }
 
-            throw new Exception("Invalid operands for binary expression.");
+            return operatorToken.Type switch
+            {
+                TokenType.ADD => Add(left, right),
+                TokenType.SUB => Subtract(left, right),
+                TokenType.MUL => Multiply(left, right),
+                TokenType.DIV => Divide(left, right),
+                _ => throw new NotImplementedException($"Operator {operatorToken.Type} is not implemented."),
+            };
+        }
+
+        private object ConvertIfString(object value)
+        {
+            if (value is string stringValue)
+            {
+                if (int.TryParse(stringValue, out int intValue))
+                {
+                    return intValue;
+                }
+                if (float.TryParse(stringValue, out float floatValue))
+                {
+                    return floatValue;
+                }
+            }
+            return value;
+        }
+
+        private object Add(object left, object right)
+        {
+            if (left is float leftFloat && right is float rightFloat)
+            {
+                return leftFloat + rightFloat;
+            }
+            if (left is int leftInt && right is int rightInt)
+            {
+                return leftInt + rightInt;
+            }
+            throw new Exception("Invalid operands for addition." + left + " " + right);
+        }
+
+        private object Subtract(object left, object right)
+        {
+            if (left is float leftFloat && right is float rightFloat)
+            {
+                return leftFloat - rightFloat;
+            }
+            else if (left is int leftInt && right is int rightInt)
+            {
+                return leftInt - rightInt;
+            }
+            throw new Exception("Invalid operands for subtraction.");
+        }
+
+        private object Multiply(object left, object right)
+        {
+            if (left is float leftFloat && right is float rightFloat)
+            {
+                return leftFloat * rightFloat;
+            }
+            else if (left is int leftInt && right is int rightInt)
+            {
+                return leftInt * rightInt;
+            }
+            throw new Exception("Invalid operands for multiplication.");
+        }
+
+        private object Divide(object left, object right)
+        {
+            if (left is float leftFloat && right is float rightFloat)
+            {
+                return leftFloat / rightFloat;
+            }
+            else if (left is int leftInt && right is int rightInt)
+            {
+                return leftInt / rightInt;
+            }
+            throw new Exception("Invalid operands for division.");
         }
 
         private object EvaluateLogicalExpression(object left, Token operatorToken, object right)
@@ -209,6 +285,53 @@ namespace Interpreter
 
             throw new Exception("Invalid operands for logical expression.");
         }
+
+        private object EvaluateUnaryExpression(UnaryExpression expr)
+        {
+            object right = EvaluateExpression(expr.Right);
+            right = EnsureCorrectType(right, expr.Operator.Type);
+
+            return expr.Operator.Type switch
+            {
+                TokenType.SUB => right switch
+                {
+                    float rightFloat => -rightFloat,
+                    int rightInt => -rightInt,
+                    _ => throw new Exception("Unary '-' expects a numeric operand.")
+                },
+                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception("Unary 'NOT' expects a boolean operand."),
+                _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
+            };
+        }
+
+
+        private object EnsureCorrectType(object value, TokenType operationType)
+        {
+            switch (operationType)
+            {
+                case TokenType.SUB:
+                    if (value is string stringValue)
+                    {
+                        if (float.TryParse(stringValue, out float floatValue))
+                        {
+                            return floatValue;
+                        }
+                        if (int.TryParse(stringValue, out int intValue))
+                        {
+                            return intValue;
+                        }
+                    }
+                    break;
+                case TokenType.NOT:
+                    if (value is string strValue && bool.TryParse(strValue, out bool boolValue))
+                    {
+                        return boolValue;
+                    }
+                    break;
+            }
+            return value;
+        }
+
 
         private string ConvertToString(object value)
         {
