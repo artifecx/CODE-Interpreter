@@ -8,28 +8,28 @@ namespace Interpreter
 {
     public class ExecutionContext
     {
-        private readonly Dictionary<string, object> variables = new();
+        private readonly Dictionary<string, (object Value, TokenType Type)> variables = new();
 
-        public void DeclareVariable(string name, object value)
+        public void DeclareVariable(string name, object value, TokenType type)
         {
-            // Temporary will change later
-            if (value is string stringValue && int.TryParse(stringValue, out int intValue))
+            object typedValue = type switch
             {
-                variables[name] = intValue; // Store as int
-            }
-            else
-            {
-                variables[name] = value; // Store as is
-            }
+                TokenType.INT => Convert.ToInt32(value),
+                TokenType.FLOAT => Convert.ToSingle(value),
+                TokenType.CHAR => Convert.ToChar(value),
+                TokenType.BOOL => Convert.ToBoolean(value),
+                _ => value
+            };
+
+            variables[name] = (typedValue, type);
         }
 
         public object GetVariable(string name)
         {
-            if (variables.TryGetValue(name, out var value))
+            if (variables.TryGetValue(name, out var variable))
             {
-                return value;
+                return variable.Value;
             }
-
             throw new Exception($"Variable '{name}' is not defined.");
         }
 
@@ -37,11 +37,25 @@ namespace Interpreter
         {
             if (variables.ContainsKey(name))
             {
-                variables[name] = value;
+                var type = variables[name].Type;
+                object typedValue = ConvertToType(value, type);
+                variables[name] = (typedValue, type);
                 return;
             }
 
             throw new Exception($"Variable '{name}' is not defined.");
+        }
+
+        private object ConvertToType(object value, TokenType type)
+        {
+            switch (type)
+            {
+                case TokenType.INT: return Convert.ToInt32(value);
+                case TokenType.FLOAT: return Convert.ToSingle(value);
+                case TokenType.CHAR: return Convert.ToChar(value);
+                case TokenType.BOOL: return Convert.ToBoolean(value);
+                default: return value;
+            }
         }
     }
 
@@ -70,8 +84,8 @@ namespace Interpreter
                 case DeclarationStatement decl:
                     foreach (var variable in decl.Variables)
                     {
-                        var value = variable.Initializer != null ? EvaluateExpression(variable.Initializer) : default;
-                        context.DeclareVariable(variable.Name, value);
+                        var value = variable.Initializer != null ? EvaluateExpression(variable.Initializer) : GetDefaultValue(decl.Type);
+                        context.DeclareVariable(variable.Name, value, decl.Type);
                     }
                     break;
                 case AssignmentStatement assign:
@@ -81,15 +95,15 @@ namespace Interpreter
                 case InputStatement inputStmt:
                     foreach (var variable in inputStmt.Variables)
                     {
-                        Console.WriteLine($"Enter value for {variable.Name}: ");
+                        //Console.WriteLine($"Enter value for {variable.Name}: ");
                         var input = Console.ReadLine();
-                        context.DeclareVariable(variable.Name, input);
+                        context.SetVariable(variable.Name, input);
                     }
                     break;
                 case OutputStatement output:
                     foreach (var expression in output.Expressions)
                     {
-                        Console.WriteLine(EvaluateExpression(expression));
+                        Console.Write(EvaluateExpression(expression));
                     }
                     break;
                 case IfStatement ifStmt:
@@ -146,7 +160,13 @@ namespace Interpreter
 
         private object EvaluateBinaryExpression(object left, Token operatorToken, object right)
         {
-            if (left is int leftInt && right is int rightInt)
+            if (operatorToken.Type == TokenType.CONCATENATE)
+            {
+                string leftStr = ConvertToString(left);
+                string rightStr = ConvertToString(right);
+                return leftStr + rightStr;
+            }
+            else if (left is int leftInt && right is int rightInt)
             {
                 return operatorToken.Type switch
                 {
@@ -167,10 +187,6 @@ namespace Interpreter
                     case TokenType.DIV: return leftFloat / rightFloat;
                 }
             }
-            else if (left is string leftStr && right is string rightStr && operatorToken.Type == TokenType.CONCATENATE)
-            {
-                return leftStr + rightStr;
-            }
 
             throw new Exception("Invalid operands for binary expression.");
         }
@@ -188,6 +204,28 @@ namespace Interpreter
             }
 
             throw new Exception("Invalid operands for logical expression.");
+        }
+
+        private string ConvertToString(object value)
+        {
+            return value switch
+            {
+                bool boolValue => boolValue ? "TRUE" : "FALSE",
+                null => "",
+                _ => value.ToString()
+            };
+        }
+
+        private object GetDefaultValue(TokenType type)
+        {
+            return type switch
+            {
+                TokenType.INT => 0,
+                TokenType.FLOAT => 0.0f,
+                TokenType.CHAR => '\0',
+                TokenType.BOOL => false,
+                _ => null
+            };
         }
     }
 }

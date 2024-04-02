@@ -43,33 +43,57 @@ namespace Interpreter
                              END CODE";
                 case 5:
                     return @"BEGIN CODE
-                                INT a=100, b=200
-                                FLOAT c = 4.2
-                                IF (a < b)
-                                BEGIN IF
-                                    a = b
-                                END IF
-                                # comment should not appear in console
-                                ""][""
+                                DISPLAY: ""Hello, Gayshit""
                              END CODE";
                 case 6:
                     return @"BEGIN CODE
-                             INT a=10, b=2, c=0
+                             INT a=2, b=9, c=0
                              c = a + b
                              DISPLAY: c
                              END CODE";
                 case 7:
                     return @"BEGIN CODE
-                                INT a=0
-                                SCAN: a
-                                DISPLAY: a
-                             END CODE";
+                                INT x = 5
+                                INT y = 10
+                                INT sum = x + y
+                                DISPLAY: sum
+                            END CODE";
                 default:
                     return "invalid choice";
             }
         }
 
         static void Main(string[] args)
+        {
+            string filePath = @"C:\Users\artifecx\source\repos\Interpreter\Interpreter\sample.code";
+
+            // Check if the file exists
+            if (File.Exists(filePath))
+            {
+                // Read the content of the file
+                string code = File.ReadAllText(filePath);
+
+                // Tokenize the input
+                var lexer = new Lexer();
+                List<Token> tokens = Lexer.Tokenize(code);
+
+                // Parse the tokens into an AST
+                var parser = new Parser(tokens);
+                var ast = parser.Parse();
+
+                // Execute the AST
+                var interpreter = new Interpreter();
+                interpreter.Interpret(ast);
+
+                Console.WriteLine("Program executed successfully.");
+            }
+            else
+            {
+                Console.WriteLine($"File not found: {filePath}");
+            }
+        }
+
+        /*static void Main(string[] args)
         {
             Console.WriteLine("Enter the code number to execute (1-7): ");
             if (int.TryParse(Console.ReadLine(), out int choice) && choice >= 1 && choice <= 7)
@@ -82,22 +106,23 @@ namespace Interpreter
                 // Parse the tokens into an AST
                 var parser = new Parser(tokens);
                 var ast = parser.Parse();
-                Console.WriteLine("Parsed AST:");
+                Console.WriteLine("\nParsed AST:");
                 foreach (var statement in ast.Statements)
                 {
                     Console.WriteLine(statement.GetType().Name);
                 }
 
                 // Execute the AST
-                var interpreter = new Interpreter(); // Ensure this is the correct initialization
+                Console.WriteLine();
+                var interpreter = new Interpreter();
                 interpreter.Interpret(ast);
 
-                Console.WriteLine("Program executed successfully.");
+                Console.WriteLine("\nProgram executed successfully.");
             }
             else
             {
                 Console.WriteLine("Invalid choice. Please enter a number between 1 and 7.");
             }
-        }
+        }*/
     }
 }

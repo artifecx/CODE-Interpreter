@@ -124,11 +124,16 @@ public class Parser
         Match(TokenType.COLON);
 
         var expressions = new List<Expression>();
-
-        while (!Check(TokenType.NEXTLINE) && !Check(TokenType.ENDCODE) && !IsAtEnd())
+        do
         {
+            if (Check(TokenType.NEXTLINE))
+            {
+                Advance();
+                expressions.Add(new LiteralExpression("\n"));
+                continue;
+            }
             expressions.Add(ParseExpression());
-        }
+        } while (!Check(TokenType.ENDCODE) && !IsAtEnd());
 
         return new OutputStatement(expressions);
     }
@@ -232,7 +237,7 @@ public class Parser
     {
         Expression expr = ParseMultiplication();
 
-        while (Match(TokenType.ADD, TokenType.SUB))
+        while (Match(TokenType.ADD, TokenType.SUB, TokenType.CONCATENATE))
         {
             Token operatorToken = Previous();
             Expression right = ParseMultiplication();
