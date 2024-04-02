@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Interpreter
 {
-    internal class Interpreter
+    internal class Program
     {
         public static string Code(int code)
         {
@@ -52,6 +52,18 @@ namespace Interpreter
                                 # comment should not appear in console
                                 ""][""
                              END CODE";
+                case 6:
+                    return @"BEGIN CODE
+                             INT a=10, b=2, c=0
+                             c = a + b
+                             DISPLAY: c
+                             END CODE";
+                case 7:
+                    return @"BEGIN CODE
+                                INT a=0
+                                SCAN: a
+                                DISPLAY: a
+                             END CODE";
                 default:
                     return "invalid choice";
             }
@@ -59,11 +71,32 @@ namespace Interpreter
 
         static void Main(string[] args)
         {
-            string inputCode = Code(5);
-            List<Token> tokens = Lexer.Tokenize(inputCode);
-            foreach (Token token in tokens)
+            Console.WriteLine("Enter the code number to execute (1-7): ");
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice >= 1 && choice <= 7)
             {
-                Console.WriteLine($"{token.Type}: {token.Value}");
+                string code = Code(choice);
+
+                // Tokenize the input
+                List<Token> tokens = Lexer.Tokenize(code);
+
+                // Parse the tokens into an AST
+                var parser = new Parser(tokens);
+                var ast = parser.Parse();
+                Console.WriteLine("Parsed AST:");
+                foreach (var statement in ast.Statements)
+                {
+                    Console.WriteLine(statement.GetType().Name);
+                }
+
+                // Execute the AST
+                var interpreter = new Interpreter(); // Ensure this is the correct initialization
+                interpreter.Interpret(ast);
+
+                Console.WriteLine("Program executed successfully.");
+            }
+            else
+            {
+                Console.WriteLine("Invalid choice. Please enter a number between 1 and 7.");
             }
         }
     }

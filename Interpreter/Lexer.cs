@@ -22,7 +22,8 @@ public enum TokenType
     INTEGERLITERAL,     // 5
     STRINGLITERAL,      // "Hello, World!"
     CHARACTERLITERAL,   // 'n'
-    BOOLLITERAL,        // "TRUE", "FALSE"
+    TRUE,               // "TRUE" - bool literal
+    FALSE,              // "FALSE" - bool literal
     FLOATLITERAL,       // 3.0
 
     // Operators
@@ -194,6 +195,10 @@ public class Lexer
         }
 
         tokens.Add(new Token(TokenType.EOF, "END OF LINE"));
+        foreach (var token in tokens)
+        {
+            Console.WriteLine($"Token: {token.Type}, Value: '{token.Value}'");
+        }
         return tokens;
     }
 
@@ -406,19 +411,19 @@ public class Lexer
             throw new InvalidOperationException("_code is null");
         }
 
+        if (_index + 2 >= _code.Length || _code[_index + 2] != '\'')
+        {
+            throw new ArgumentException("Invalid or unterminated character literal");
+        }
+
         int start = _index;
         _index++;
-        while (_index < _code.Length && CurrentChar != '\'')
-        {
-            _index++;
-        }
-        if (_index == _code.Length)
-        {
-            throw new ArgumentException("Unterminated character literal");
-        }
-        _index++;
-        string character = _code[(start + 1)..(_index - 1)].ToString();
-        return new Token(TokenType.CHAR, character);
+
+        string character = _code.Substring(_index, 1);
+
+        _index += 2;
+
+        return new Token(TokenType.CHARACTERLITERAL, character);
     }
 
     private static Token ScanString()
@@ -440,7 +445,7 @@ public class Lexer
         }
         _index++;
         string str = _code[(start + 1)..(_index - 1)].ToString();
-        if (str.Contains("TRUE") || str.Contains("FALSE")) return new Token(TokenType.BOOLLITERAL, str);
+        if (str.Contains("TRUE") || str.Contains("FALSE")) return str.Contains("TRUE") ? new Token(TokenType.TRUE, str)  : new Token(TokenType.FALSE, str);
         return new Token(TokenType.STRINGLITERAL, str);
     }
 

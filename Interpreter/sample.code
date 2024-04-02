@@ -1,0 +1,6 @@
+BEGIN CODE
+    INT x = 5
+    INT y = 10
+    INT sum = x + y
+    DISPLAY: sum
+END CODE
