@@ -208,10 +208,10 @@ public class Lexer
         tokens.Add(new Token(TokenType.EOF, "END OF LINE"));
 
         // Debugging
-        foreach (var token in tokens)
+        /*foreach (var token in tokens)
         {
             Console.WriteLine($"Token: {token.Type}, Value: '{token.Value}'");
-        }
+        }*/
         return tokens;
     }
 

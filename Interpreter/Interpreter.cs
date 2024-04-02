@@ -65,64 +65,29 @@ namespace Interpreter
 
         static void Main(string[] args)
         {
+            //Console.WriteLine("Enter the code number to execute: ");
+            //string code = Code(choice);
             string filePath = @"C:\Users\artifecx\source\repos\Interpreter\Interpreter\sample.code";
 
-            // Check if the file exists
             if (File.Exists(filePath))
             {
-                // Read the content of the file
                 string code = File.ReadAllText(filePath);
 
-                // Tokenize the input
                 var lexer = new Lexer();
                 List<Token> tokens = Lexer.Tokenize(code);
 
-                // Parse the tokens into an AST
                 var parser = new Parser(tokens);
                 var ast = parser.Parse();
 
-                // Execute the AST
                 var interpreter = new Interpreter();
                 interpreter.Interpret(ast);
 
-                Console.WriteLine("\nProgram executed successfully.");
+                //Console.WriteLine("\nProgram executed successfully.");
             }
             else
             {
                 Console.WriteLine($"File not found: {filePath}");
             }
         }
-
-        /*static void Main(string[] args)
-        {
-            Console.WriteLine("Enter the code number to execute (1-7): ");
-            if (int.TryParse(Console.ReadLine(), out int choice) && choice >= 1 && choice <= 7)
-            {
-                string code = Code(choice);
-
-                // Tokenize the input
-                List<Token> tokens = Lexer.Tokenize(code);
-
-                // Parse the tokens into an AST
-                var parser = new Parser(tokens);
-                var ast = parser.Parse();
-                Console.WriteLine("\nParsed AST:");
-                foreach (var statement in ast.Statements)
-                {
-                    Console.WriteLine(statement.GetType().Name);
-                }
-
-                // Execute the AST
-                Console.WriteLine();
-                var interpreter = new Interpreter();
-                interpreter.Interpret(ast);
-
-                Console.WriteLine("\nProgram executed successfully.");
-            }
-            else
-            {
-                Console.WriteLine("Invalid choice. Please enter a number between 1 and 7.");
-            }
-        }*/
     }
 }
