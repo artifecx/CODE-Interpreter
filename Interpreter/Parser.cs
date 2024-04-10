@@ -371,7 +371,7 @@ public class Parser
 
     private Expression ParseUnary()
     {
-        if (Match(TokenType.SUB))
+        if (Match(TokenType.SUB, TokenType.ADD))
         {
             Token operatorToken = Previous();
             Expression right = ParseUnary();

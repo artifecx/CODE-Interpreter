@@ -346,6 +346,12 @@ namespace Interpreter
                     int rightInt => -rightInt,
                     _ => throw new Exception("Unary '-' expects a numeric operand.")
                 },
+                TokenType.ADD => right switch
+                {
+                    float rightFloat => rightFloat,
+                    int rightInt => rightInt,
+                    _ => throw new Exception("Unary '+' expects a numeric operand.")
+                },
                 TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"{right} Unary 'NOT' expects a boolean operand."),
                 _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
             };
@@ -356,7 +362,7 @@ namespace Interpreter
         {
             switch (operationType)
             {
-                case TokenType.SUB:
+                case TokenType.SUB or TokenType.ADD:
                     if (value is string stringValue)
                     {
                         if (float.TryParse(stringValue, out float floatValue))
