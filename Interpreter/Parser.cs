@@ -6,7 +6,9 @@ public class Parser
 {
     private readonly List<Token> tokens;
     private readonly HashSet<string> declaredVariables = new HashSet<string>();
+    private readonly List<Statement> statements = new List<Statement>();
     private int current = 0;
+    private int _current = 0;
     private bool variableDeclarationPhase = true;
 
     public Parser(List<Token> tokens)
@@ -37,7 +39,7 @@ public class Parser
 
     public ProgramNode Parse()
     {
-        var statements = new List<Statement>();
+        //var statements = new List<Statement>();
         try
         {
             EnsureProgramStructure();
@@ -91,21 +93,27 @@ public class Parser
         if (Match(TokenType.SCAN))
             return ParseInputStatement();
 
-        if (Check(TokenType.IDENTIFIER))
+        if (Check(TokenType.IDENTIFIER) || Check(TokenType.COMMA)) // added comma to parse multiple assignments in one line
         {
+            if (Statement(_current - 1) is AssignmentStatement && Previous().Type is not TokenType.NEXTLINE)
+            {
+                Consume(TokenType.COMMA, $"Error at line: {Peek().Line}. Expect ',' after expression.");
+            }
+
             if (Previous().Type == TokenType.NEXTLINE && variableDeclarationPhase)
             {
                 variableDeclarationPhase = false;
             }
 
-            if (!declaredVariables.Contains(Peek().Value))
+            if (!declaredVariables.Contains(Peek().Value) && Check(TokenType.IDENTIFIER))
             {
                 throw new ParseException($"Error at line: {Peek().Line}. Undeclared variable '{Peek().Value}'.");
             }
+            
             return ParseAssignmentStatement();
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. Expect statement.");
+        throw new ParseException($"Error at line: {Peek().Line}. '{Peek().Value}' + '{Previous().Value}' Expect statement.");
     }
 
     private DeclarationStatement ParseDeclarationStatement()
@@ -130,6 +138,7 @@ public class Parser
             declaredVariables.Add(name);
         } while (Match(TokenType.COMMA));
 
+        _current++;
         return new DeclarationStatement(type, variables);
     }
 
@@ -138,6 +147,8 @@ public class Parser
         Token name = Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Expect variable name.");
         Consume(TokenType.ASSIGNMENT, $"Error at line: {Peek().Line}. Expect '=' after variable name.");
         Expression value = ParseExpression();
+
+        _current++;
         return new AssignmentStatement(new Variable(name.Value), value);
     }
 
@@ -154,6 +165,7 @@ public class Parser
             elseBranch = ParseBlock(TokenType.ENDIF);
         }
 
+        _current++;
         return new IfStatement(condition, thenBranch, elseBranch);
     }
 
@@ -165,6 +177,7 @@ public class Parser
 
         List<Statement> body = ParseBlock(TokenType.ENDWHILE);
 
+        _current++;
         return new WhileStatement(condition, body);
     }
 
@@ -198,6 +211,7 @@ public class Parser
             expectConcatOperator = true;
         } while (!Check(TokenType.ENDCODE) && !IsAtEnd() && !Peek().Value.Contains("\\n"));
 
+        _current++;
         return new OutputStatement(expressions);
     }
 
@@ -211,6 +225,7 @@ public class Parser
             variables.Add(new Variable(Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Variable name for input expected.").Value));
         } while (Match(TokenType.COMMA));
 
+        _current++;
         return new InputStatement(variables);
     }
 
@@ -424,6 +439,11 @@ public class Parser
     private void ConsumeNewlines()
     {
         while (Match(TokenType.NEXTLINE)) { }
+    }
+
+    private Statement Statement(int index)
+    {
+        return statements[index];
     }
 
 }

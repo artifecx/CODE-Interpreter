@@ -85,6 +85,13 @@ namespace Interpreter
                 var parser = new Parser(tokens);
                 var ast = parser.Parse();
 
+                // Debugging
+                /*Console.WriteLine("\nParsed AST:");
+                foreach (var statement in ast.Statements)
+                {
+                    Console.WriteLine(statement.GetType().Name);
+                }*/
+
                 var interpreter = new Interpreter();
                 interpreter.Interpret(ast);
 

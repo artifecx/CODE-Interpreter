@@ -14,7 +14,7 @@ BEGIN CODE
     # arithmetic operation DONE
     INT x, y, z=5
     CHAR a_1='n'
-    BOOL t="TRUE"
+    BOOL t="TRUE" 
     x=y=4
     a_1='c'
     # this is a comment
