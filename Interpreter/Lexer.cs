@@ -74,7 +74,7 @@ public class Token
 {
     public TokenType Type { get; }
     public string Value { get; }
-    public int Line { get; } // Line number information
+    public int Line { get; }
 
     public Token(TokenType type, string value, int line)
     {
@@ -128,6 +128,7 @@ public class Lexer
 
             switch (currentChar)
             {
+                #region SPECIAL
                 case '\n':
                     tokens.Add(new Token(TokenType.NEXTLINE, "\\n", _line));
                     _index++;
@@ -139,6 +140,7 @@ public class Lexer
                 case '\r':
                     _index++;
                     break;
+                #endregion SPECIAL
 
                 #region OPERATORS
                 case '=':
@@ -301,49 +303,6 @@ public class Lexer
         return isFloat ? new Token(TokenType.FLOATLITERAL, number, _line) : new Token(TokenType.INTEGERLITERAL, number, _line);
     }
 
-    private static bool IsUnaryOperator(List<Token> tokens)
-    {
-        if (_index == 0)
-        {
-            return true;
-        }
-
-        Token previousToken = tokens[^1];
-        if (previousToken.Type == TokenType.OPENPARENTHESIS)
-        {
-            return true;
-        } 
-        if (previousToken.Type == TokenType.IDENTIFIER)
-        {
-            return false;
-        }
-        if(previousToken.Type == TokenType.AND || previousToken.Type == TokenType.OR || previousToken.Type == TokenType.NOT)
-        {
-            return true;
-        }
-        if (new[] { '=', '+', '-', '*', '/', '%', '>', '<' }.Any(c => previousToken.Value.Contains(c)))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private static char PeekChar(int offset)
-    {
-        if (_code == null)
-        {
-            throw new InvalidOperationException("_code is null");
-        }
-
-        int peekIndex = _index + offset;
-        if (peekIndex < 0 || peekIndex >= _code.Length)
-        {
-            return '\0';
-        }
-        return _code[peekIndex];
-    }
-
     private static void SkipComment()
     {
         if (_code == null)
@@ -357,9 +316,9 @@ public class Lexer
         }
 
         if (_index < _code.Length && CurrentChar == '\n')
-    {
-        _index++;
-    }
+        {
+            _index++;
+        }
     }
 
     private static Token ScanEscape()
@@ -407,32 +366,6 @@ public class Lexer
         return new Token(TokenType.STRINGLITERAL, content, _line);
     }
 
-
-    private static Token ScanIdentifier()
-    {
-        if (_code == null)
-        {
-            throw new InvalidOperationException("_code is null");
-        }
-
-        int start = _index;
-        while (_index < _code.Length && (char.IsLetterOrDigit(CurrentChar) || CurrentChar == '_'))
-        {
-            _index++;
-        }
-
-        string value = _code[start.._index].ToString();
-        if(value == "BEGIN" || value == "END")
-        {
-            return value == "BEGIN" ? CheckNextWord(TokenType.BEGIN, value) : CheckNextWord(TokenType.END, value);
-        }
-        if (keywords.TryGetValue(value, out TokenType type))
-        {
-            return new Token(type, value, _line);
-        }
-        return new Token(TokenType.IDENTIFIER, value, _line);
-    }
-
     private static Token ScanCharacter()
     {
         if (_code == null)
@@ -474,8 +407,33 @@ public class Lexer
         }
         _index++;
         string str = _code[(start + 1)..(_index - 1)].ToString();
-        if (str.Contains("TRUE") || str.Contains("FALSE")) return str.Contains("TRUE") ? new Token(TokenType.TRUE, str, _line)  : new Token(TokenType.FALSE, str, _line);
+        if (str.Contains("TRUE") || str.Contains("FALSE")) return str.Contains("TRUE") ? new Token(TokenType.TRUE, str, _line) : new Token(TokenType.FALSE, str, _line);
         return new Token(TokenType.STRINGLITERAL, str, _line);
+    }
+
+    private static Token ScanIdentifier()
+    {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
+        int start = _index;
+        while (_index < _code.Length && (char.IsLetterOrDigit(CurrentChar) || CurrentChar == '_'))
+        {
+            _index++;
+        }
+
+        string value = _code[start.._index].ToString();
+        if(value == "BEGIN" || value == "END")
+        {
+            return value == "BEGIN" ? CheckNextWord(TokenType.BEGIN, value) : CheckNextWord(TokenType.END, value);
+        }
+        if (keywords.TryGetValue(value, out TokenType type))
+        {
+            return new Token(type, value, _line);
+        }
+        return new Token(TokenType.IDENTIFIER, value, _line);
     }
 
     private static bool ScanNextAndPrev()
@@ -566,6 +524,21 @@ public class Lexer
             default:
                 return firstWord.Contains("BEGIN")  ? new Token(TokenType.BEGIN, firstWord, _line) : new Token(TokenType.END, firstWord, _line);
         }
+    }
+
+    private static char PeekChar(int offset)
+    {
+        if (_code == null)
+        {
+            throw new InvalidOperationException("_code is null");
+        }
+
+        int peekIndex = _index + offset;
+        if (peekIndex < 0 || peekIndex >= _code.Length)
+        {
+            return '\0';
+        }
+        return _code[peekIndex];
     }
     #endregion HELPER METHODS
 }

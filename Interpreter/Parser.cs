@@ -1,6 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using Interpreter;
+
+public class ParseException : Exception
+{
+    public ParseException(string message) : base(message) { }
+}
 
 public class Parser
 {
@@ -13,6 +19,21 @@ public class Parser
     public Parser(List<Token> tokens)
     {
         this.tokens = tokens;
+    }
+
+    public ProgramNode Parse()
+    {
+        try
+        {
+            EnsureProgramStructure();
+            return ParseProgram(statements);
+        }
+        catch (ParseException ex)
+        {
+            Console.WriteLine($"{ex.Message}");
+            Environment.Exit(1);
+            return null;
+        }
     }
 
     private void EnsureProgramStructure()
@@ -33,26 +54,6 @@ public class Parser
             int errorLine = duplicateBeginCodeIndex > -1 ? tokens[duplicateBeginCodeIndex].Line : tokens[duplicateEndCodeIndex].Line;
             string duplicateToken = duplicateBeginCodeIndex > -1 ? "BEGIN CODE" : "END CODE";
             throw new ParseException($"Error at line: {errorLine}. Only one {duplicateToken} should exist. ");
-        }
-    }
-
-    private bool IsReservedKeyword(string name)
-    {
-        return Lexer.keywords.ContainsKey(name);
-    }
-
-    public ProgramNode Parse()
-    {
-        try
-        {
-            EnsureProgramStructure();
-            return ParseProgram(statements);
-        }
-        catch (ParseException ex)
-        {
-            Console.WriteLine($"{ex.Message}");
-            Environment.Exit(1);
-            return null;
         }
     }
 
@@ -83,17 +84,10 @@ public class Parser
             return ParseDeclarationStatement();
         }
 
-        if (Match(TokenType.IF))
-            return ParseIfStatement();
-
-        if (Match(TokenType.WHILE))
-            return ParseWhileStatement();
-
-        if (Match(TokenType.DISPLAY))
-            return ParseOutputStatement();
-
-        if (Match(TokenType.SCAN))
-            return ParseInputStatement();
+        if (Match(TokenType.IF)) return ParseIfStatement();
+        if (Match(TokenType.WHILE)) return ParseWhileStatement();
+        if (Match(TokenType.DISPLAY)) return ParseOutputStatement();
+        if (Match(TokenType.SCAN)) return ParseInputStatement();
 
         if (Check(TokenType.IDENTIFIER) || Check(TokenType.COMMA)) // added comma to parse multiple assignments in one line
         {
@@ -118,7 +112,7 @@ public class Parser
             return ParseAssignmentStatement();
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. {Peek().Value} Expect statement. {Previous().Value}");
+        throw new ParseException($"Error at line: {Peek().Line}. Expect statement.");
     }
 
     private DeclarationStatement ParseDeclarationStatement()
@@ -206,6 +200,27 @@ public class Parser
         List<Statement> body = ParseBlock(TokenType.ENDWHILE);
 
         return new WhileStatement(condition, body);
+    }
+
+    private List<Statement> ParseBlock(TokenType endToken)
+    {
+        List<Statement> statements = new List<Statement>();
+
+        while (!Check(endToken) && !IsAtEnd())
+        {
+            ConsumeNewlines();
+            statements.Add(ParseStatement());
+            ConsumeNewlines();
+
+            //Console.WriteLine("Statement added: " + statements[statements.Count-1]);
+        }
+
+        Consume(endToken, $"Error at line: {Peek().Line}. Expect '{endToken}' after block.");
+        ConsumeNewlines();
+
+        // Debugging
+        //Console.WriteLine($"Current: {Peek().Value}, Previous: {Previous().Value}");
+        return statements;
     }
 
     private OutputStatement ParseOutputStatement()
@@ -406,27 +421,7 @@ public class Parser
         throw new ParseException($"Error at line: {Peek().Line}. Expect expression.");
     }
 
-    private List<Statement> ParseBlock(TokenType endToken)
-    {
-        List<Statement> statements = new List<Statement>();
-
-        while (!Check(endToken) && !IsAtEnd())
-        {
-            ConsumeNewlines();
-            statements.Add(ParseStatement());
-            ConsumeNewlines();
-
-            //Console.WriteLine("Statement added: " + statements[statements.Count-1]);
-        }
-
-        Consume(endToken, $"Error at line: {Peek().Line}. Expect '{endToken}' after block.");
-        ConsumeNewlines();
-
-        // Debugging
-        //Console.WriteLine($"Current: {Peek().Value}, Previous: {Previous().Value}");
-        return statements;
-    }
-
+    #region HELPER METHODS
     private bool Match(params TokenType[] types)
     {
         foreach (var type in types)
@@ -479,6 +474,11 @@ public class Parser
         while (Match(TokenType.NEXTLINE)) { }
     }
 
+    private bool IsReservedKeyword(string name)
+    {
+        return Lexer.keywords.ContainsKey(name);
+    }
+
     private Statement Statement(int index)
     {
         try
@@ -490,9 +490,5 @@ public class Parser
             throw new ParseException($"Error at line: {Peek().Line}. {ex.Message}");
         }
     }
-}
-
-public class ParseException : Exception
-{
-    public ParseException(string message) : base(message) { }
+    #endregion HELPER METHODS
 }
