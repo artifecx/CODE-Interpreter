@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 
 public enum TokenType
 {
@@ -73,17 +74,21 @@ public class Token
 {
     public TokenType Type { get; }
     public string Value { get; }
+    public int Line { get; } // Line number information
 
-    public Token(TokenType type, string value)
+    public Token(TokenType type, string value, int line)
     {
         Type = type;
         Value = value;
+        Line = line;
     }
 }
+
 
 public class Lexer
 {
     private static int _index = 0;
+    private static int _line = 1;
     private static string? _code;
 
     private static readonly Dictionary<string, TokenType> keywords = new Dictionary<string, TokenType>
@@ -113,6 +118,7 @@ public class Lexer
     public static List<Token> Tokenize(string code)
     {
         _code = code;
+        _line = 1;
         _index = 0;
         var tokens = new List<Token>();
 
@@ -123,8 +129,9 @@ public class Lexer
             switch (currentChar)
             {
                 case '\n':
-                    tokens.Add(new Token(TokenType.NEXTLINE, "\\n"));
+                    tokens.Add(new Token(TokenType.NEXTLINE, "\\n", _line));
                     _index++;
+                    _line++;
                     break;
 
                 case ' ':
@@ -167,11 +174,16 @@ public class Lexer
                 case '(':
                 case ')':
                     tokens.Add(HandleDelimiter(currentChar));
+                    if (currentChar == '$')
+                    {
+                        _line++;
+                    }
                     _index++;
                     break;
 
                 case '#':
                     SkipComment();
+                    _line++;
                     break;
 
                 case '[':
@@ -205,7 +217,7 @@ public class Lexer
             }
         }
 
-        tokens.Add(new Token(TokenType.EOF, "END OF LINE"));
+        tokens.Add(new Token(TokenType.EOF, "END OF LINE", _line));
 
         // Debugging
         /*foreach (var token in tokens)
@@ -223,27 +235,27 @@ public class Lexer
         switch (currentChar)
         {
             case '=':
-                return PeekChar(1) == '=' ? new Token(TokenType.EQUAL, "==") : new Token(TokenType.ASSIGNMENT, "=");
+                return PeekChar(1) == '=' ? new Token(TokenType.EQUAL, "==", _line) : new Token(TokenType.ASSIGNMENT, "=", _line);
             case '+':
-                return new Token(TokenType.ADD, "+");
+                return new Token(TokenType.ADD, "+", _line);
             case '-':
-                return new Token(TokenType.SUB, "-");
+                return new Token(TokenType.SUB, "-", _line);
             case '*':
-                return new Token(TokenType.MUL, "*");
+                return new Token(TokenType.MUL, "*", _line);
             case '/':
-                return new Token(TokenType.DIV, "/");
+                return new Token(TokenType.DIV, "/", _line);
             case '%':
-                return new Token(TokenType.MOD, "%");
+                return new Token(TokenType.MOD, "%", _line);
             case '>':
-                return PeekChar(1) == '=' ? new Token(TokenType.GTEQ, ">=") : new Token(TokenType.GREATERTHAN, ">");
+                return PeekChar(1) == '=' ? new Token(TokenType.GTEQ, ">=", _line) : new Token(TokenType.GREATERTHAN, ">", _line);
             case '<':
-                if (PeekChar(1) == '=') return new Token(TokenType.LTEQ, "<=");
-                if (PeekChar(1) == '>') return new Token(TokenType.NOTEQUAL, "<>");
-                return new Token(TokenType.LESSERTHAN, "<");
+                if (PeekChar(1) == '=') return new Token(TokenType.LTEQ, "<=", _line);
+                if (PeekChar(1) == '>') return new Token(TokenType.NOTEQUAL, "<>", _line);
+                return new Token(TokenType.LESSERTHAN, "<", _line);
             case '&':
-                return new Token(TokenType.CONCATENATE, "&");
+                return new Token(TokenType.CONCATENATE, "&", _line);
             default:
-                return new Token(TokenType.UNKNOWN, "Unknown Operator");
+                return new Token(TokenType.UNKNOWN, "Unknown Operator", _line);
         }
     }
 
@@ -252,17 +264,17 @@ public class Lexer
         switch (currentChar)
         {
             case '$':
-                return new Token(TokenType.NEXTLINE, "$");
+                return new Token(TokenType.NEXTLINE, "$" , _line);
             case ':':
-                return new Token(TokenType.COLON, ":");
+                return new Token(TokenType.COLON, ":", _line);
             case ',':
-                return new Token(TokenType.COMMA, ",");
+                return new Token(TokenType.COMMA, ",", _line);
             case '(':
-                return new Token(TokenType.OPENPARENTHESIS, "(");
+                return new Token(TokenType.OPENPARENTHESIS, "(", _line);
             case ')':
-                return new Token(TokenType.CLOSEPARENTHESIS, ")");
+                return new Token(TokenType.CLOSEPARENTHESIS, ")", _line);
             default:
-                return new Token(TokenType.UNKNOWN, "Unknown Delimiter");
+                return new Token(TokenType.UNKNOWN, "Unknown Delimiter", _line);
         }
     }
 
@@ -286,7 +298,7 @@ public class Lexer
             _index++;
         }
 
-        return isFloat ? new Token(TokenType.FLOATLITERAL, number) : new Token(TokenType.INTEGERLITERAL, number);
+        return isFloat ? new Token(TokenType.FLOATLITERAL, number, _line) : new Token(TokenType.INTEGERLITERAL, number, _line);
     }
 
     private static bool IsUnaryOperator(List<Token> tokens)
@@ -392,7 +404,7 @@ public class Lexer
 
         string content = _code[start..lastClosedBracket];
 
-        return new Token(TokenType.STRINGLITERAL, content);
+        return new Token(TokenType.STRINGLITERAL, content, _line);
     }
 
 
@@ -414,11 +426,11 @@ public class Lexer
         {
             return value == "BEGIN" ? CheckNextWord(TokenType.BEGIN, value) : CheckNextWord(TokenType.END, value);
         }
-        if (keywords.TryGetValue(value.ToUpper(), out TokenType type))
+        if (keywords.TryGetValue(value, out TokenType type))
         {
-            return new Token(type, value);
+            return new Token(type, value, _line);
         }
-        return new Token(TokenType.IDENTIFIER, value);
+        return new Token(TokenType.IDENTIFIER, value, _line);
     }
 
     private static Token ScanCharacter()
@@ -440,7 +452,7 @@ public class Lexer
 
         _index += 2;
 
-        return new Token(TokenType.CHARACTERLITERAL, character);
+        return new Token(TokenType.CHARACTERLITERAL, character, _line);
     }
 
     private static Token ScanString()
@@ -462,8 +474,8 @@ public class Lexer
         }
         _index++;
         string str = _code[(start + 1)..(_index - 1)].ToString();
-        if (str.Contains("TRUE") || str.Contains("FALSE")) return str.Contains("TRUE") ? new Token(TokenType.TRUE, str)  : new Token(TokenType.FALSE, str);
-        return new Token(TokenType.STRINGLITERAL, str);
+        if (str.Contains("TRUE") || str.Contains("FALSE")) return str.Contains("TRUE") ? new Token(TokenType.TRUE, str, _line)  : new Token(TokenType.FALSE, str, _line);
+        return new Token(TokenType.STRINGLITERAL, str, _line);
     }
 
     private static bool ScanNextAndPrev()
@@ -508,7 +520,7 @@ public class Lexer
 
         if (_index == _code.Length)
         {
-            return new Token(TokenType.IDENTIFIER, tokenType.ToString());
+            return new Token(TokenType.IDENTIFIER, tokenType.ToString(), _line);
         }
 
         int start = _index;
@@ -524,31 +536,31 @@ public class Lexer
             case "CODE":
                 if (firstWord.Contains("BEGIN"))
                 {
-                    return new Token(TokenType.BEGINCODE, concatenated);
+                    return new Token(TokenType.BEGINCODE, concatenated, _line);
                 }
                 else
                 {
-                    return new Token(TokenType.ENDCODE, concatenated);
+                    return new Token(TokenType.ENDCODE, concatenated, _line);
                 }
 
             case "IF":
                 if (firstWord.Contains("BEGIN"))
                 {
-                    return new Token(TokenType.BEGINIF, concatenated);
+                    return new Token(TokenType.BEGINIF, concatenated, _line);
                 }
                 else
                 {
-                    return new Token(TokenType.ENDIF, concatenated);
+                    return new Token(TokenType.ENDIF, concatenated, _line);
                 }
 
             case "WHILE":
                 if (firstWord.Contains("BEGIN"))
                 {
-                    return new Token(TokenType.BEGINWHILE, concatenated);
+                    return new Token(TokenType.BEGINWHILE, concatenated, _line);
                 }
                 else
                 {
-                    return new Token(TokenType.ENDWHILE, concatenated);
+                    return new Token(TokenType.ENDWHILE, concatenated, _line);
                 }
 
             default:
