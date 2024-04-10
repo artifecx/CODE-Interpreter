@@ -279,7 +279,8 @@ namespace Interpreter
 
         private object PerformOperation(object left, object right, string operation)
         {
-            Console.WriteLine($"Performing operation {operation} on {left} and {right}.");
+            // Debugging
+            //Console.WriteLine($"Performing operation {operation} on {left} and {right}.");
             if (left is float leftFloat && right is float rightFloat)
             {
                 switch (operation)

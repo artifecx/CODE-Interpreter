@@ -8,7 +8,6 @@ public class Parser
     private readonly HashSet<string> declaredVariables = new HashSet<string>();
     private readonly List<Statement> statements = new List<Statement>();
     private int current = 0;
-    private int _current = 0;
     private bool variableDeclarationPhase = true;
 
     public Parser(List<Token> tokens)
@@ -98,9 +97,9 @@ public class Parser
 
         if (Check(TokenType.IDENTIFIER) || Check(TokenType.COMMA)) // added comma to parse multiple assignments in one line
         {
-            if (statements.Count > 0 && _current - 1 > 0)
+            if (statements.Count > 0 && statements.Count - 1 > 0)
             {
-                if (Statement(_current - 1) is AssignmentStatement && Previous().Type is not TokenType.NEXTLINE)
+                if (Statement(statements.Count - 1) is AssignmentStatement && Previous().Type is not TokenType.NEXTLINE)
                 {
                     Consume(TokenType.COMMA, $"Error at line: {Peek().Line}. Expect ',' after an assignment.");
                 }
@@ -149,7 +148,6 @@ public class Parser
             declaredVariables.Add(name);
         } while (Match(TokenType.COMMA));
 
-        _current++;
         return new DeclarationStatement(type, variables);
     }
 
@@ -164,7 +162,6 @@ public class Parser
         Consume(TokenType.ASSIGNMENT, $"Error at line: {Peek().Line}. Expect '=' after variable name.");
         Expression value = ParseExpression();
 
-        _current++;
         return new AssignmentStatement(new Variable(name.Value), value);
     }
 
@@ -193,19 +190,21 @@ public class Parser
             }
         }
 
-        _current++;
         return new IfStatement(condition, thenBranch, elseBranch);
     }
 
     private WhileStatement ParseWhileStatement()
     {
-        Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after 'WHILE'.");
+        Consume(TokenType.OPENPARENTHESIS, "Expect '(' after 'WHILE'.");
         Expression condition = ParseExpression();
-        Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after condition.");
+        Consume(TokenType.CLOSEPARENTHESIS, "Expect ')' after condition.");
+        Advance();
 
+        //Console.WriteLine($"Current: {Peek().Value}, Previous: {Previous().Value}");
+
+        Consume(TokenType.BEGINWHILE, "Expect 'BEGIN WHILE'.");
         List<Statement> body = ParseBlock(TokenType.ENDWHILE);
 
-        _current++;
         return new WhileStatement(condition, body);
     }
 
@@ -239,7 +238,6 @@ public class Parser
             expectConcatOperator = true;
         } while (!Check(TokenType.ENDCODE) && !IsAtEnd() && !Peek().Value.Contains("\\n"));
 
-        _current++;
         return new OutputStatement(expressions);
     }
 
@@ -253,7 +251,6 @@ public class Parser
             variables.Add(new Variable(Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Variable name for input expected.").Value));
         } while (Match(TokenType.COMMA));
 
-        _current++;
         return new InputStatement(variables);
     }
 
@@ -419,7 +416,7 @@ public class Parser
             statements.Add(ParseStatement());
             ConsumeNewlines();
 
-            Console.WriteLine("Statement added: " + statements[statements.Count-1]);
+            //Console.WriteLine("Statement added: " + statements[statements.Count-1]);
         }
 
         Consume(endToken, $"Error at line: {Peek().Line}. Expect '{endToken}' after block.");
