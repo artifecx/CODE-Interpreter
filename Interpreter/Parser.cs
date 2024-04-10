@@ -346,10 +346,16 @@ public class Parser
 
     private Expression ParseUnary()
     {
-        if (Match(TokenType.NOT, TokenType.SUB))
+        if (Match(TokenType.SUB))
         {
             Token operatorToken = Previous();
             Expression right = ParseUnary();
+            return new UnaryExpression(operatorToken, right);
+        }
+        if (Match(TokenType.NOT))
+        {
+            Token operatorToken = Previous();
+            Expression right = ParseExpression();
             return new UnaryExpression(operatorToken, right);
         }
 

@@ -88,35 +88,19 @@ namespace Interpreter
 
         private bool IsTypeCompatible(object value, TokenType type)
         {
-            if (value is string strValue)
+            switch (type)
             {
-                switch (type)
-                {
-                    case TokenType.INT:
-                        return int.TryParse(strValue, out _);
-                    case TokenType.FLOAT:
-                        return float.TryParse(strValue, out _);
-                    case TokenType.CHAR:
-                        return strValue.Length == 1;
-                    case TokenType.BOOL:
-                        return bool.TryParse(strValue, out _);
-                }
+                case TokenType.INT:
+                    return int.TryParse(value.ToString(), out _);
+                case TokenType.FLOAT:
+                    return float.TryParse(value.ToString(), out _);
+                case TokenType.CHAR:
+                    return value.ToString().Length == 1;
+                case TokenType.BOOL:
+                    return bool.TryParse(value.ToString(), out _);
+                default:
+                    return false;
             }
-            else
-            {
-                switch (type)
-                {
-                    case TokenType.INT:
-                        return value is int;
-                    case TokenType.FLOAT:
-                        return value is float || value is int;
-                    case TokenType.CHAR:
-                        return value is char;
-                    case TokenType.BOOL:
-                        return value is bool;
-                }
-            }
-            return false;
         }
     }
 
@@ -262,10 +246,17 @@ namespace Interpreter
 
             return operatorToken.Type switch
             {
-                TokenType.ADD => Add(left, right),
-                TokenType.SUB => Subtract(left, right),
-                TokenType.MUL => Multiply(left, right),
-                TokenType.DIV => Divide(left, right),
+                TokenType.ADD => PerformOperation(left, right, operatorToken.Value),
+                TokenType.SUB => PerformOperation(left, right, operatorToken.Value),
+                TokenType.MUL => PerformOperation(left, right, operatorToken.Value),
+                TokenType.DIV => PerformOperation(left, right, operatorToken.Value),
+                TokenType.MOD => PerformOperation(left, right, operatorToken.Value),
+                TokenType.GREATERTHAN => PerformOperation(left, right, operatorToken.Value),
+                TokenType.LESSERTHAN => PerformOperation(left, right, operatorToken.Value),
+                TokenType.GTEQ => PerformOperation(left, right, operatorToken.Value),
+                TokenType.LTEQ => PerformOperation(left, right, operatorToken.Value),
+                TokenType.EQUAL => PerformOperation(left, right, operatorToken.Value),
+                TokenType.NOTEQUAL => PerformOperation(left, right, operatorToken.Value),
                 _ => throw new NotImplementedException($"Operator {operatorToken.Type} is not implemented."),
             };
         }
@@ -286,56 +277,45 @@ namespace Interpreter
             return value;
         }
 
-        private object Add(object left, object right)
+        private object PerformOperation(object left, object right, string operation)
         {
+            Console.WriteLine($"Performing operation {operation} on {left} and {right}.");
             if (left is float leftFloat && right is float rightFloat)
             {
-                return leftFloat + rightFloat;
+                switch (operation)
+                {
+                    case "+": return leftFloat + rightFloat;
+                    case "-": return leftFloat - rightFloat;
+                    case "*": return leftFloat * rightFloat;
+                    case "/": return leftFloat / rightFloat;
+                    case "%": return leftFloat % rightFloat;
+                    case "==": return leftFloat == rightFloat;
+                    case "<>": return leftFloat != rightFloat;
+                    case ">": return leftFloat > rightFloat;
+                    case "<": return leftFloat < rightFloat;
+                    case ">=": return leftFloat >= rightFloat;
+                    case "<=": return leftFloat <= rightFloat;
+                }
             }
             if (left is int leftInt && right is int rightInt)
             {
-                return leftInt + rightInt;
+                switch (operation)
+                {
+                    case "+": return leftInt + rightInt;
+                    case "-": return leftInt - rightInt;
+                    case "*": return leftInt * rightInt;
+                    case "/": return leftInt / rightInt;
+                    case "%": return leftInt % rightInt;
+                    case "==": return leftInt == rightInt;
+                    case "<>": return leftInt != rightInt;
+                    case ">": return leftInt > rightInt;
+                    case "<": return leftInt < rightInt;
+                    case ">=": return leftInt >= rightInt;
+                    case "<=": return leftInt <= rightInt;
+                }
             }
-            throw new Exception("Invalid operands for addition." + left + " " + right);
-        }
 
-        private object Subtract(object left, object right)
-        {
-            if (left is float leftFloat && right is float rightFloat)
-            {
-                return leftFloat - rightFloat;
-            }
-            else if (left is int leftInt && right is int rightInt)
-            {
-                return leftInt - rightInt;
-            }
-            throw new Exception("Invalid operands for subtraction.");
-        }
-
-        private object Multiply(object left, object right)
-        {
-            if (left is float leftFloat && right is float rightFloat)
-            {
-                return leftFloat * rightFloat;
-            }
-            else if (left is int leftInt && right is int rightInt)
-            {
-                return leftInt * rightInt;
-            }
-            throw new Exception("Invalid operands for multiplication.");
-        }
-
-        private object Divide(object left, object right)
-        {
-            if (left is float leftFloat && right is float rightFloat)
-            {
-                return leftFloat / rightFloat;
-            }
-            else if (left is int leftInt && right is int rightInt)
-            {
-                return leftInt / rightInt;
-            }
-            throw new Exception("Invalid operands for division.");
+            throw new Exception($"Invalid operands for operation '{operation}'.");
         }
 
         private object EvaluateLogicalExpression(object left, Token operatorToken, object right)
@@ -366,7 +346,7 @@ namespace Interpreter
                     int rightInt => -rightInt,
                     _ => throw new Exception("Unary '-' expects a numeric operand.")
                 },
-                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception("Unary 'NOT' expects a boolean operand."),
+                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"{right} Unary 'NOT' expects a boolean operand."),
                 _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
             };
         }
