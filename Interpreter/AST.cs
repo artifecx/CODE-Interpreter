@@ -51,7 +51,7 @@ namespace Interpreter
         public List<Statement> ThenBranch { get; }
         public List<Statement> ElseBranch { get; }
 
-        public IfStatement(Expression condition, List<Statement> thenBranch, List<Statement>? elseBranch = null)
+        public IfStatement(Expression condition, List<Statement> thenBranch, List<Statement>? elseBranch)
         {
             Condition = condition;
             ThenBranch = thenBranch;

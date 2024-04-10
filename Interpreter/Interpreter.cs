@@ -91,6 +91,7 @@ namespace Interpreter
                 {
                     Console.WriteLine(statement.GetType().Name);
                 }
+                Console.WriteLine();
 
                 var interpreter = new Interpreter();
                 interpreter.Interpret(ast);

@@ -37,9 +37,13 @@ public class Parser
         }
     }
 
+    private bool IsReservedKeyword(string name)
+    {
+        return Lexer.keywords.ContainsKey(name);
+    }
+
     public ProgramNode Parse()
     {
-        //var statements = new List<Statement>();
         try
         {
             EnsureProgramStructure();
@@ -51,7 +55,6 @@ public class Parser
             Environment.Exit(1);
             return null;
         }
-        //return new ProgramNode(statements ?? new List<Statement>());
     }
 
     private ProgramNode ParseProgram(List<Statement> statements)
@@ -116,7 +119,7 @@ public class Parser
             return ParseAssignmentStatement();
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. Expect statement.");
+        throw new ParseException($"Error at line: {Peek().Line}. {Peek().Value} Expect statement. {Previous().Value}");
     }
 
     private DeclarationStatement ParseDeclarationStatement()
@@ -126,7 +129,12 @@ public class Parser
 
         do
         {
-            string name = Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Expect variable name.").Value;
+            if (IsReservedKeyword(Peek().Value))
+            {
+                throw new ParseException($"Error at line: {Peek().Line}. Reserved keyword '{Peek().Value}' cannot be used as a variable name.");
+            }
+
+            string name = Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Invalid variable name '{Peek().Value}'.").Value;
             Expression initializer = null;
             if (!declaredVariables.Add(name))
             {
@@ -148,6 +156,11 @@ public class Parser
     private AssignmentStatement ParseAssignmentStatement()
     {
         Token name = Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Expect variable name.");
+        if (IsReservedKeyword(name.Value))
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. '{name}' is a reserved keyword and cannot be used as a variable name.");
+        }
+
         Consume(TokenType.ASSIGNMENT, $"Error at line: {Peek().Line}. Expect '=' after variable name.");
         Expression value = ParseExpression();
 
@@ -160,12 +173,24 @@ public class Parser
         Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after 'IF'.");
         Expression condition = ParseExpression();
         Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after if condition.");
+        Advance();
 
+        Consume(TokenType.BEGINIF, $"Error at line: {Peek().Line}. Expect 'BEGIN IF'.");
         List<Statement> thenBranch = ParseBlock(TokenType.ENDIF);
         List<Statement> elseBranch = null;
+
         if (Match(TokenType.ELSE))
         {
-            elseBranch = ParseBlock(TokenType.ENDIF);
+            ConsumeNewlines();
+            if (Match(TokenType.IF))
+            {
+                elseBranch = new List<Statement> { ParseIfStatement() };
+            }
+            else
+            {
+                Consume(TokenType.BEGINIF, $"Error at line: {Peek().Line}. Expect 'BEGIN IF' after 'ELSE'.");
+                elseBranch = ParseBlock(TokenType.ENDIF);
+            }
         }
 
         _current++;
@@ -390,11 +415,18 @@ public class Parser
 
         while (!Check(endToken) && !IsAtEnd())
         {
+            ConsumeNewlines();
             statements.Add(ParseStatement());
+            ConsumeNewlines();
+
+            Console.WriteLine("Statement added: " + statements[statements.Count-1]);
         }
 
         Consume(endToken, $"Error at line: {Peek().Line}. Expect '{endToken}' after block.");
+        ConsumeNewlines();
 
+        // Debugging
+        //Console.WriteLine($"Current: {Peek().Value}, Previous: {Previous().Value}");
         return statements;
     }
 

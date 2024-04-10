@@ -91,7 +91,7 @@ public class Lexer
     private static int _line = 1;
     private static string? _code;
 
-    private static readonly Dictionary<string, TokenType> keywords = new Dictionary<string, TokenType>
+    public static readonly Dictionary<string, TokenType> keywords = new Dictionary<string, TokenType>
     {
         {"BEGIN", TokenType.BEGIN},
         {"END", TokenType.END},
@@ -564,7 +564,7 @@ public class Lexer
                 }
 
             default:
-                throw new Exception($"Unidentified {firstWord} statement.");
+                return firstWord.Contains("BEGIN")  ? new Token(TokenType.BEGIN, firstWord, _line) : new Token(TokenType.END, firstWord, _line);
         }
     }
     #endregion HELPER METHODS
