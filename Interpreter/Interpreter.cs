@@ -86,7 +86,7 @@ namespace Interpreter
                 var ast = parser.Parse();
 
                 // Debugging
-                /*Console.WriteLine("\nParsed AST:");
+                /* Console.WriteLine("\nParsed AST:");
                 foreach (var statement in ast.Statements)
                 {
                     Console.WriteLine(statement.GetType().Name);

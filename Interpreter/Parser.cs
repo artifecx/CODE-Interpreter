@@ -95,9 +95,12 @@ public class Parser
 
         if (Check(TokenType.IDENTIFIER) || Check(TokenType.COMMA)) // added comma to parse multiple assignments in one line
         {
-            if (Statement(_current - 1) is AssignmentStatement && Previous().Type is not TokenType.NEXTLINE)
+            if (statements.Count > 0 && _current - 1 > 0)
             {
-                Consume(TokenType.COMMA, $"Error at line: {Peek().Line}. Expect ',' after expression.");
+                if (Statement(_current - 1) is AssignmentStatement && Previous().Type is not TokenType.NEXTLINE)
+                {
+                    Consume(TokenType.COMMA, $"Error at line: {Peek().Line}. Expect ',' after an assignment.");
+                }
             }
 
             if (Previous().Type == TokenType.NEXTLINE && variableDeclarationPhase)
@@ -113,7 +116,7 @@ public class Parser
             return ParseAssignmentStatement();
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. '{Peek().Value}' + '{Previous().Value}' Expect statement.");
+        throw new ParseException($"Error at line: {Peek().Line}. Expect statement.");
     }
 
     private DeclarationStatement ParseDeclarationStatement()
@@ -443,9 +446,15 @@ public class Parser
 
     private Statement Statement(int index)
     {
-        return statements[index];
+        try
+        {
+            return statements[index];
+        }
+        catch (Exception ex)
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. {ex.Message}");
+        }
     }
-
 }
 
 public class ParseException : Exception

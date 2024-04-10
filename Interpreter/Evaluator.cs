@@ -12,14 +12,27 @@ namespace Interpreter
 
         public void DeclareVariable(string name, object value, TokenType type)
         {
-            object typedValue = type switch
+            object typedValue;
+            try
             {
-                TokenType.INT => Convert.ToInt32(value),
-                TokenType.FLOAT => Convert.ToSingle(value),
-                TokenType.CHAR => Convert.ToChar(value),
-                TokenType.BOOL => Convert.ToBoolean(value),
-                _ => value
-            };
+                typedValue = type switch
+                {
+                    TokenType.INT => Convert.ToInt32(value),
+                    TokenType.FLOAT => Convert.ToSingle(value),
+                    TokenType.CHAR => Convert.ToChar(value),
+                    TokenType.BOOL => Convert.ToBoolean(value),
+                    _ => value
+                };
+            }
+            catch
+            {
+                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value {value}.");
+            }
+
+            if (!IsTypeCompatible(value, type))
+            {
+                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value {value}.");
+            }
 
             variables[name] = (typedValue, type);
         }
@@ -37,8 +50,23 @@ namespace Interpreter
         {
             if (variables.ContainsKey(name))
             {
-                var type = variables[name].Type;
-                object typedValue = ConvertToType(value, type);
+                var (existingValue, type) = variables[name];
+
+                object typedValue;
+                try
+                {
+                    typedValue = ConvertToType(value, type);
+                }
+                catch
+                {
+                    throw new Exception($"Type mismatch: Cannot assign value {value} to '{name}' of type {type}.");
+                }
+
+                if (!IsTypeCompatible(value, type))
+                {
+                    throw new Exception($"Type mismatch: Cannot assign value {value} to '{name}' of type {type}.");
+                }
+
                 variables[name] = (typedValue, type);
                 return;
             }
@@ -57,6 +85,39 @@ namespace Interpreter
                 default: return value;
             }
         }
+
+        private bool IsTypeCompatible(object value, TokenType type)
+        {
+            if (value is string strValue)
+            {
+                switch (type)
+                {
+                    case TokenType.INT:
+                        return int.TryParse(strValue, out _);
+                    case TokenType.FLOAT:
+                        return float.TryParse(strValue, out _);
+                    case TokenType.CHAR:
+                        return strValue.Length == 1;
+                    case TokenType.BOOL:
+                        return bool.TryParse(strValue, out _);
+                }
+            }
+            else
+            {
+                switch (type)
+                {
+                    case TokenType.INT:
+                        return value is int;
+                    case TokenType.FLOAT:
+                        return value is float || value is int;
+                    case TokenType.CHAR:
+                        return value is char;
+                    case TokenType.BOOL:
+                        return value is bool;
+                }
+            }
+            return false;
+        }
     }
 
     public class Interpreter
@@ -65,15 +126,21 @@ namespace Interpreter
 
         public void Interpret(ProgramNode program)
         {
-            if (program == null || program.Statements == null)
+            try
             {
-                Console.WriteLine("No program to interpret.");
-                return;
-            }
+                if (program == null || program.Statements == null)
+                {
+                    throw new Exception("No program to interpret.");
+                }
 
-            foreach (var statement in program.Statements)
+                foreach (var statement in program.Statements)
+                {
+                    ExecuteStatement(statement);
+                }
+            }
+            catch (Exception ex)
             {
-                ExecuteStatement(statement);
+                Console.WriteLine(ex.Message);
             }
         }
 
@@ -331,7 +398,6 @@ namespace Interpreter
             }
             return value;
         }
-
 
         private string ConvertToString(object value)
         {
