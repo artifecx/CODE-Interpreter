@@ -16,6 +16,17 @@ public class Parser
     private int current = 0;
     private bool variableDeclarationPhase = true;
 
+    private Dictionary<TokenType, Func<Expression, FunctionCallExpression>> functionMap =
+        new Dictionary<TokenType, Func<Expression, FunctionCallExpression>>
+        {
+            { TokenType.CEIL, arg => new CeilExpression(arg) },
+            { TokenType.FLOOR, arg => new FloorExpression(arg) },
+            { TokenType.TOSTRING, arg => new ToStringExpression(arg) },
+            { TokenType.TOFLOAT, arg => new ToFloatExpression(arg) },
+            { TokenType.TOINT, arg => new ToIntExpression(arg) },
+            { TokenType.TYPE, arg => new TypeExpression(arg) }
+        };
+
     public Parser(List<Token> tokens)
     {
         this.tokens = tokens;
@@ -110,6 +121,10 @@ public class Parser
             }
             
             return ParseAssignmentStatement();
+        }
+        if (Check(TokenType.UNKNOWN))
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. Unknown character '{Peek().Value}'");
         }
 
         throw new ParseException($"Error at line: {Peek().Line}. Expect statement.");
@@ -206,7 +221,7 @@ public class Parser
     {
         List<Statement> statements = new List<Statement>();
 
-        while (!Check(endToken) && !IsAtEnd())
+        while (!Check(endToken) && !IsAtEnd() && !Check(TokenType.ENDCODE))
         {
             ConsumeNewlines();
             statements.Add(ParseStatement());
@@ -229,6 +244,11 @@ public class Parser
 
         var expressions = new List<Expression>();
         bool expectConcatOperator = false;
+
+        if ((Check(TokenType.NEXTLINE) && Peek().Value != "$") || Check(TokenType.ENDCODE))
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. Nothing to display.");
+        }
 
         do
         {
@@ -403,14 +423,29 @@ public class Parser
     {
         if (Match(TokenType.FALSE)) return new LiteralExpression(false);
         if (Match(TokenType.TRUE)) return new LiteralExpression(true);
-        if (Match(TokenType.INTEGERLITERAL, TokenType.FLOATLITERAL, TokenType.STRINGLITERAL, TokenType.CHARACTERLITERAL))
+        if (Match(TokenType.INTEGERLITERAL)) return new LiteralExpression(int.Parse(Previous().Value));
+        if (Match(TokenType.FLOATLITERAL)) return new LiteralExpression(float.Parse(Previous().Value));
+        if (Match(TokenType.STRINGLITERAL, TokenType.CHARACTERLITERAL))
         {
             return new LiteralExpression(Previous().Value);
         }
+        
+        if (Match(TokenType.PI)) return new LiteralExpression(Math.PI);
+
+        if (Match(TokenType.CEIL, TokenType.FLOOR, TokenType.TOINT, TokenType.TOFLOAT, TokenType.TOSTRING, TokenType.TYPE))
+        {
+            return ParseFunctionCall();
+        }
+
         if (Match(TokenType.IDENTIFIER))
         {
+            if (Check(TokenType.OPENPARENTHESIS))
+            {
+                return ParseFunctionCall();
+            }
             return new VariableExpression(Previous().Value);
         }
+
         if (Match(TokenType.OPENPARENTHESIS))
         {
             Expression expr = ParseExpression();
@@ -419,6 +454,29 @@ public class Parser
         }
 
         throw new ParseException($"Error at line: {Peek().Line}. Expect expression.");
+    }
+
+    private Expression ParseFunctionCall()
+    {
+        Token functionName = Previous();
+        Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after function name.");
+
+        if (Check(TokenType.CLOSEPARENTHESIS))
+        {
+            throw new ParseException($"Error at line {Peek().Line}: Function '{functionName.Value}' expects an argument.");
+        }
+
+        Expression argument = ParseExpression();
+        Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after argument.");
+
+        if (functionMap.TryGetValue(functionName.Type, out var constructor))
+        {
+            return constructor(argument);
+        }
+        else
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. Unsupported function '{functionName.Value}'.");
+        }
     }
 
     #region HELPER METHODS

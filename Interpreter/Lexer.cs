@@ -67,7 +67,31 @@ public enum TokenType
 
     // Special
     UNKNOWN,            // Unrecognized token
-    EOF                 // End of File
+    EOF,                 // End of File
+
+    // New additions, will group later
+    BREAK,              // Break out of loop
+    CONTINUE,           // Skip to next iteration
+    PI,                 // 3.14159...
+    CEIL,               // Round up
+    FLOOR,              // Round down
+    SWITCH,              // Switch case
+    DO,                 // Do while loop
+    FOR,                 // For loop
+    POSTFIXINCREMENT,   // i++
+    POSTFIXDECREMENT,   // i--
+    PREFIXINCREMENT,    // ++i
+    PREFIXDECREMENT,    // --i
+    MODASSIGNMENT,      // %=
+    ADDASSIGNMENT,      // +=
+    SUBASSIGNMENT,      // -=
+    MULASSIGNMENT,      // *=
+    DIVASSIGNMENT,      // /=
+    STRING,             // String data type, can be used to store multiple characters
+    TOINT,              // Convert to integer, can only convert float to integer, truncates decimal part
+    TOFLOAT,            // Convert to float, can only convert integer to float
+    TOSTRING,           // Convert to string, convert anything to string
+    TYPE,               // Type keyword, used to define data types
 }
 
 public class Token
@@ -97,9 +121,15 @@ public class Lexer
         {"END", TokenType.END},
 
         {"CODE", TokenType.CODE},
+
         {"IF", TokenType.IF},
         {"ELSE", TokenType.ELSE},
+        {"SWITCH", TokenType.SWITCH},
+
         {"WHILE", TokenType.WHILE},
+        {"FOR", TokenType.FOR},
+        {"DO", TokenType.DO},
+
         {"DISPLAY", TokenType.DISPLAY},
         {"SCAN", TokenType.SCAN},
 
@@ -112,7 +142,20 @@ public class Lexer
 
         {"AND", TokenType.AND},
         {"OR", TokenType.OR},
-        {"NOT", TokenType.NOT},  
+        {"NOT", TokenType.NOT},
+
+        {"BREAK", TokenType.BREAK},
+        {"CONTINUE", TokenType.CONTINUE},
+
+        {"PI", TokenType.PI},
+        {"CEIL", TokenType.CEIL},
+        {"FLOOR", TokenType.FLOOR},
+
+        {"TOINT", TokenType.TOINT},
+        {"TOFLOAT", TokenType.TOFLOAT},
+        {"TOSTRING", TokenType.TOSTRING},
+
+        {"TYPE", TokenType.TYPE},
     };
 
     public static List<Token> Tokenize(string code)
@@ -121,112 +164,123 @@ public class Lexer
         _line = 1;
         _index = 0;
         var tokens = new List<Token>();
-
-        while (_index < _code.Length)
+        try
         {
-            char currentChar = CurrentChar;
-
-            switch (currentChar)
+            while (_index < _code.Length)
             {
-                #region SPECIAL
-                case '\n':
-                    tokens.Add(new Token(TokenType.NEXTLINE, "\\n", _line));
-                    _index++;
-                    _line++;
-                    break;
+                char currentChar = CurrentChar;
 
-                case ' ':
-                case '\t':
-                case '\r':
-                    _index++;
-                    break;
-                #endregion SPECIAL
-
-                #region OPERATORS
-                case '=':
-                case '+':
-                case '-':
-                case '*':
-                case '/':
-                case '%':
-                case '>':
-                case '<':
-                    tokens.Add(HandleOperator(currentChar, tokens));
-                    _index +=  (currentChar == '=' || currentChar == '>' || currentChar == '<') && (PeekChar(1) == '=' || PeekChar(1) == '>') ? 2 : 1;
-                    break;
-
-                case '&':
-                    if(ScanNextAndPrev()) // do not read & - added to handle & $ &, & $, $ &
-                    {
+                switch (currentChar)
+                {
+                    #region SPECIAL
+                    case '\n':
+                        tokens.Add(new Token(TokenType.NEXTLINE, "\\n", _line));
                         _index++;
-                    }
-                    else
-                    {
-                        tokens.Add(HandleOperator(currentChar, tokens));
-                        _index++;
-                    }
-                    break;
-
-                #endregion OPERATORS
-
-                #region DELIMITERS
-                case '$':
-                case ':':
-                case ',':
-                case '(':
-                case ')':
-                    tokens.Add(HandleDelimiter(currentChar));
-                    if (currentChar == '$')
-                    {
                         _line++;
-                    }
-                    _index++;
-                    break;
+                        break;
 
-                case '#':
-                    SkipComment();
-                    _line++;
-                    break;
+                    case ' ':
+                    case '\t':
+                    case '\r':
+                        _index++;
+                        break;
+                    #endregion SPECIAL
 
-                case '[':
-                    tokens.Add(ScanEscape());
-                    break;
+                    #region OPERATORS
+                    case '=':
+                    case '+':
+                    case '-':
+                    case '*':
+                    case '/':
+                    case '%':
+                    case '>':
+                    case '<':
+                        tokens.Add(HandleOperator(currentChar, tokens));
+                        _index += (currentChar == '=' || currentChar == '>' || currentChar == '<') && (PeekChar(1) == '=' || PeekChar(1) == '>') ? 2 : 1;
+                        break;
 
-                #endregion DELIMITERS
+                    case '&':
+                        if (ScanNextAndPrev()) // do not read & - added to handle & $ &, & $, $ &
+                        {
+                            _index++;
+                        }
+                        else
+                        {
+                            tokens.Add(HandleOperator(currentChar, tokens));
+                            _index++;
+                        }
+                        break;
 
-                case '"':
-                    tokens.Add(ScanString());
-                    break;
+                    #endregion OPERATORS
 
-                case '\'':
-                    tokens.Add(ScanCharacter());
-                    break;
+                    #region DELIMITERS
+                    case '$':
+                    case ':':
+                    case ',':
+                    case '(':
+                    case ')':
+                        tokens.Add(HandleDelimiter(currentChar));
+                        if (currentChar == '$')
+                        {
+                            _line++;
+                        }
+                        _index++;
+                        break;
 
-                default:
-                    if (char.IsLetter(currentChar) || currentChar == '_')
-                    {
-                        tokens.Add(ScanIdentifier());
-                    }
-                    else if (char.IsDigit(currentChar))
-                    {
-                        tokens.Add(FloatOrInteger());
-                    }
-                    else
-                    {
-                        throw new ArgumentException($"Unexpected character at index {_index}: {currentChar}");
-                    }
-                    break;
+                    case '#':
+                        SkipComment();
+                        tokens.Add(new Token(TokenType.NEXTLINE, "\\n", _line)); // add newline so it doesnt break the code :)
+                        _line++;
+                        break;
+
+                    case '[':
+                        tokens.Add(ScanEscape());
+                        break;
+
+                    #endregion DELIMITERS
+
+                    case '"':
+                        tokens.Add(ScanString());
+                        break;
+
+                    case '\'':
+                        tokens.Add(ScanCharacter());
+                        break;
+
+                    default:
+                        if (char.IsLetter(currentChar) || currentChar == '_')
+                        {
+                            tokens.Add(ScanIdentifier());
+                        }
+                        else if (char.IsDigit(currentChar))
+                        {
+                            tokens.Add(FloatOrInteger());
+                        }
+                        else
+                        {
+                            tokens.Add(new Token(TokenType.UNKNOWN, currentChar.ToString(), _line));
+                            _index++;
+                            //throw new ArgumentException($"Unexpected character at index {_index}: {currentChar}");
+                        }
+                        break;
+                }
             }
+
+            tokens.Add(new Token(TokenType.EOF, "END OF LINE", _line));
+
+            // Debugging
+            /*foreach (var token in tokens)
+            {
+                Console.WriteLine($"Token: {token.Type}, Value: '{token.Value}'");
+            }*/
+            return tokens;
         }
-
-        tokens.Add(new Token(TokenType.EOF, "END OF LINE", _line));
-
-        // Debugging
-        /*foreach (var token in tokens)
+        catch (Exception e)
         {
-            Console.WriteLine($"Token: {token.Type}, Value: '{token.Value}'");
-        }*/
-        return tokens;
+            Console.WriteLine(e.Message);
+            Environment.Exit(1);
+            return null;
+        }
     }
 
     #region HELPER METHODS
@@ -373,12 +427,15 @@ public class Lexer
             throw new InvalidOperationException("_code is null");
         }
 
-        if (_index + 2 >= _code.Length || _code[_index + 2] != '\'')
+        if (_code[_index + 2] != '\'')
         {
-            throw new ArgumentException("Invalid or unterminated character literal");
+            if (_code[_index + 1] == '\'')
+            {
+                throw new ArgumentException($"Error at line {_line}. Empty character literal.");
+            }
+            throw new ArgumentException($"Error at line {_line}. Invalid or unterminated character literal.");
         }
 
-        int start = _index;
         _index++;
 
         string character = _code.Substring(_index, 1);
@@ -425,7 +482,7 @@ public class Lexer
         }
 
         string value = _code[start.._index].ToString();
-        if(value == "BEGIN" || value == "END")
+        if (value == "BEGIN" || value == "END")
         {
             return value == "BEGIN" ? CheckNextWord(TokenType.BEGIN, value) : CheckNextWord(TokenType.END, value);
         }

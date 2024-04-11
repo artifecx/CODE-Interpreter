@@ -185,4 +185,46 @@ namespace Interpreter
             Expression = expression;
         }
     }
+
+    public abstract class FunctionCallExpression : Expression
+    {
+        public string FunctionName { get; }
+        public Expression Argument { get; }
+
+        protected FunctionCallExpression(string functionName, Expression argument)
+        {
+            FunctionName = functionName;
+            Argument = argument;
+        }
+    }
+
+    public class CeilExpression : FunctionCallExpression
+    {
+        public CeilExpression(Expression argument) : base("CEIL", argument) { }
+    }
+
+    public class FloorExpression : FunctionCallExpression
+    {
+        public FloorExpression(Expression argument) : base("FLOOR", argument) { }
+    }
+
+    public class ToStringExpression : FunctionCallExpression
+    {
+        public ToStringExpression(Expression argument) : base("TOSTRING", argument) { }
+    }
+
+    public class ToFloatExpression : FunctionCallExpression
+    {
+        public ToFloatExpression(Expression argument) : base("TOFLOAT", argument) { }
+    }
+
+    public class ToIntExpression : FunctionCallExpression
+    {
+        public ToIntExpression(Expression argument) : base("TOINT", argument) { }
+    }
+
+    public class TypeExpression : FunctionCallExpression
+    {
+        public TypeExpression(Expression argument) : base("TYPE", argument) { }
+    }
 }

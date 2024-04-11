@@ -212,9 +212,43 @@ namespace Interpreter
                     return value;
                 case GroupingExpression groupExpr:
                     return EvaluateExpression(groupExpr.Expression);
+                case FunctionCallExpression func:
+                    return EvaluateFunctionCall(func);
                 default:
                     throw new NotImplementedException($"Evaluation not implemented for expression type {expression.GetType().Name}");
             }
+        }
+
+        private object EvaluateFunctionCall(FunctionCallExpression func)
+        {
+            var argumentValue = EvaluateExpression(func.Argument);
+            return func switch
+            {
+                CeilExpression _ => Math.Ceiling(Convert.ToDouble(argumentValue)),
+                FloorExpression _ => Math.Floor(Convert.ToDouble(argumentValue)),
+                ToStringExpression _ => ConvertToString(argumentValue),
+                ToFloatExpression _ => Convert.ToSingle(argumentValue),
+                ToIntExpression _ => ConvertToInt(argumentValue),
+                TypeExpression _ => EvaluateTypeExpression(argumentValue),
+                _ => throw new NotImplementedException($"Function {func.FunctionName} is not implemented.")
+            };
+        }
+
+        private string EvaluateTypeExpression(object value)
+        {
+            if (value is int)
+                return "INT";
+            if (value is float || value is double)
+                return "FLOAT";
+            if (value is bool)
+                return "BOOL";
+            if (value is string)
+                return "STRING";
+            if (value is char)
+                return "CHAR";
+            if (value is null)
+                return "NULL";
+            return "UNKNOWN";
         }
 
         private object EvaluateBinaryExpression(object left, Token operatorToken, object right)
@@ -234,6 +268,13 @@ namespace Interpreter
 
             bool isLeftFloat = left is float;
             bool isRightFloat = right is float;
+
+            // for PI, not ideal, only holds 7 decimal places
+            if (left is double || right is double)
+            {
+                left = Convert.ToSingle(left);
+                right = Convert.ToSingle(right);
+            }
 
             if (left is int && isRightFloat)
             {
@@ -280,7 +321,8 @@ namespace Interpreter
         private object PerformOperation(object left, object right, string operation)
         {
             // Debugging
-            //Console.WriteLine($"Performing operation {operation} on {left} and {right}.");
+            //Console.WriteLine($"Performing operation {operation} on {left} {left.GetType()} and {right} {right.GetType()}.");
+
             if (left is float leftFloat && right is float rightFloat)
             {
                 switch (operation)
@@ -384,6 +426,34 @@ namespace Interpreter
                     break;
             }
             return value;
+        }
+
+        // for function call TOINT, error if trying to convert a float to int if I use Convert.ToInt32()
+        private int ConvertToInt(object value)
+        {
+            if (value is float floatValue)
+            {
+                return (int)floatValue;
+            }
+            else if (value is double doubleValue)
+            {
+                return (int)doubleValue;
+            }
+            else if (value is string stringValue)
+            {
+                if (float.TryParse(stringValue, out float result))
+                {
+                    return (int)result;
+                }
+                else
+                {
+                    throw new Exception($"Cannot convert '{stringValue}' to int.");
+                }
+            }
+            else
+            {
+                return Convert.ToInt32(value);
+            }
         }
 
         private string ConvertToString(object value)
