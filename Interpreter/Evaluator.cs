@@ -141,6 +141,8 @@ namespace Interpreter
                     break;
                 case AssignmentStatement assign:
                     var assignValue = EvaluateExpression(assign.Value);
+                    var variableValue = context.GetVariable(assign.Variable.Name);
+                    if (assign.Operator.Type != TokenType.ASSIGNMENT) assignValue = EvaluateBinaryExpression(variableValue, assign.Operator, assignValue);
                     context.SetVariable(assign.Variable.Name, assignValue);
                     break;
                 case InputStatement inputStmt:
@@ -148,6 +150,7 @@ namespace Interpreter
                     {
                         //Console.WriteLine($"Enter value for {variable.Name}: ");
                         var input = Console.ReadLine();
+                        if (input == null || input == "") throw new Exception($"Input is invalid, try again.");
                         context.SetVariable(variable.Name, input);
                     }
                     break;
@@ -298,6 +301,11 @@ namespace Interpreter
                 TokenType.LTEQ => PerformOperation(left, right, operatorToken.Value),
                 TokenType.EQUAL => PerformOperation(left, right, operatorToken.Value),
                 TokenType.NOTEQUAL => PerformOperation(left, right, operatorToken.Value),
+                TokenType.ADDASSIGNMENT => PerformOperation(left, right, "+"),
+                TokenType.SUBASSIGNMENT => PerformOperation(left, right, "-"),
+                TokenType.MULASSIGNMENT => PerformOperation(left, right, "*"),
+                TokenType.DIVASSIGNMENT => PerformOperation(left, right, "/"),
+                TokenType.MODASSIGNMENT => PerformOperation(left, right, "%"),
                 _ => throw new NotImplementedException($"Operator {operatorToken.Type} is not implemented."),
             };
         }

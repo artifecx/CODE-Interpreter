@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Xml.Linq;
 using Interpreter;
-
-public class ParseException : Exception
-{
-    public ParseException(string message) : base(message) { }
-}
 
 public class Parser
 {
@@ -168,10 +164,30 @@ public class Parser
             throw new ParseException($"Error at line: {Peek().Line}. '{name}' is a reserved keyword and cannot be used as a variable name.");
         }
 
-        Consume(TokenType.ASSIGNMENT, $"Error at line: {Peek().Line}. Expect '=' after variable name.");
+        List<TokenType> assignmentType = new List<TokenType> {
+            TokenType.ASSIGNMENT, TokenType.ADDASSIGNMENT, TokenType.SUBASSIGNMENT, 
+            TokenType.MULASSIGNMENT, TokenType.DIVASSIGNMENT, TokenType.MODASSIGNMENT
+        };
+
+        Token operatorToken = null;
+        for (int i = 0; i < assignmentType.Count; i++)
+        {
+            if (Check(assignmentType[i]))
+            {
+                operatorToken = Peek();
+                Advance();
+                break;
+            }
+            if (i == assignmentType.Count - 1)
+            {
+                throw new ParseException($"Error at line: {Peek().Line}. Expect proper assignment operator after variable name.");
+            }
+        }
+
+        //Consume(TokenType.ASSIGNMENT, $"Error at line: {Peek().Line}. Expect '=' after variable name.");
         Expression value = ParseExpression();
 
-        return new AssignmentStatement(new Variable(name.Value), value);
+        return new AssignmentStatement(new Variable(name.Value), operatorToken, value);
     }
 
     private IfStatement ParseIfStatement()
@@ -283,8 +299,18 @@ public class Parser
         var variables = new List<Variable>();
         do
         {
+            if(!declaredVariables.Contains(Peek().Value))
+            {
+                if (IsReservedKeyword(Peek().Value))
+                {
+                    throw new ParseException($"Error at line: {Peek().Line}. '{Peek().Value}' is a reserved keyword and cannot be used as a variable name.");
+                }
+                throw new ParseException($"Error at line: {Peek().Line}. Variable '{Peek().Value}' is not declared.");
+            }
             variables.Add(new Variable(Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Variable name for input expected.").Value));
         } while (Match(TokenType.COMMA));
+
+        if (Check(TokenType.IDENTIFIER)) throw new ParseException($"Error at line: {Peek().Line}. Expect comma between variables, received '{Peek().Value}'.");
 
         return new InputStatement(variables);
     }
@@ -298,7 +324,8 @@ public class Parser
     {
         Expression expr = ParseOr();
 
-        if (Match(TokenType.ASSIGNMENT))
+        if (Match(TokenType.ASSIGNMENT, TokenType.ADDASSIGNMENT, TokenType.SUBASSIGNMENT,
+            TokenType.MULASSIGNMENT, TokenType.DIVASSIGNMENT, TokenType.MODASSIGNMENT))
         {
             Token equals = Previous();
             Expression value = ParseAssignment();
@@ -306,7 +333,7 @@ public class Parser
             if (expr is VariableExpression)
             {
                 String name = ((VariableExpression)expr).Name;
-                return new AssignmentExpression(new Variable(name, null), value);
+                return new AssignmentExpression(new Variable(name, null), equals, value);
             }
             else
             {

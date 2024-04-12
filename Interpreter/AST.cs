@@ -36,11 +36,13 @@ namespace Interpreter
     public class AssignmentStatement : Statement
     {
         public Variable Variable { get; }
+        public Token Operator { get; }
         public Expression Value { get; }
 
-        public AssignmentStatement(Variable variable, Expression value)
+        public AssignmentStatement(Variable variable, Token operatorToken, Expression value)
         {
             Variable = variable;
+            Operator = operatorToken;
             Value = value;
         }
     }
@@ -153,11 +155,13 @@ namespace Interpreter
     public class AssignmentExpression : Expression
     {
         public Variable Variable { get; }
+        public Token Operator { get; }
         public Expression Value { get; }
 
-        public AssignmentExpression(Variable variable, Expression value)
+        public AssignmentExpression(Variable variable, Token operatorToken, Expression value)
         {
             Variable = variable;
+            Operator = operatorToken;
             Value = value;
         }
     }
