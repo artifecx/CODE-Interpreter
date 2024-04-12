@@ -70,28 +70,33 @@ public enum TokenType
     EOF,                 // End of File
 
     // New additions, will group later
-    BREAK,              // Break out of loop
-    CONTINUE,           // Skip to next iteration
     PI,                 // 3.14159...
     CEIL,               // Round up
     FLOOR,              // Round down
-    SWITCH,              // Switch case
-    DO,                 // Do while loop
-    FOR,                 // For loop
-    POSTFIXINCREMENT,   // i++
-    POSTFIXDECREMENT,   // i--
-    PREFIXINCREMENT,    // ++i
-    PREFIXDECREMENT,    // --i
+    TOINT,              // Convert to integer, can only convert float to integer, truncates decimal part
+    TOFLOAT,            // Convert to float, can only convert integer to float
+    TOSTRING,           // Convert to string, convert anything to string
+    TYPE,               // Type keyword, used to define data types
+
+    INCREMENT,          // i++, ++i
+    DECREMENT,          // i--, --i
     MODASSIGNMENT,      // %=
     ADDASSIGNMENT,      // +=
     SUBASSIGNMENT,      // -=
     MULASSIGNMENT,      // *=
     DIVASSIGNMENT,      // /=
+
+    // not done yet
+    BREAK,              // Break out of loop
+    CONTINUE,           // Skip to next iteration
+  
+    SWITCH,             // Switch case
+    DO,                 // Do while loop
+    FOR,                // For loop
+
     STRING,             // String data type, can be used to store multiple characters
-    TOINT,              // Convert to integer, can only convert float to integer, truncates decimal part
-    TOFLOAT,            // Convert to float, can only convert integer to float
-    TOSTRING,           // Convert to string, convert anything to string
-    TYPE,               // Type keyword, used to define data types
+
+    FUNCTION,           // Function keyword, used to define functions
 }
 
 public class Token
@@ -156,6 +161,7 @@ public class Lexer
         {"TOSTRING", TokenType.TOSTRING},
 
         {"TYPE", TokenType.TYPE},
+        {"FUNCTION", TokenType.FUNCTION },
     };
 
     public static List<Token> Tokenize(string code)
@@ -196,7 +202,7 @@ public class Lexer
                     case '>':
                     case '<':
                         tokens.Add(HandleOperator(currentChar, tokens));
-                        _index += (currentChar == '=' || currentChar == '>' || currentChar == '<') && (PeekChar(1) == '=' || PeekChar(1) == '>') ? 2 : 1;
+                        _index += addIndex(currentChar);
                         break;
 
                     case '&':
@@ -269,10 +275,10 @@ public class Lexer
             tokens.Add(new Token(TokenType.EOF, "END OF LINE", _line));
 
             // Debugging
-            /*foreach (var token in tokens)
+            foreach (var token in tokens)
             {
                 Console.WriteLine($"Token: {token.Type}, Value: '{token.Value}'");
-            }*/
+            }
             return tokens;
         }
         catch (Exception e)
@@ -293,15 +299,15 @@ public class Lexer
             case '=':
                 return PeekChar(1) == '=' ? new Token(TokenType.EQUAL, "==", _line) : new Token(TokenType.ASSIGNMENT, "=", _line);
             case '+':
-                return new Token(TokenType.ADD, "+", _line);
+                return PeekChar(1) == '+' ? new Token(TokenType.INCREMENT, "++", _line)  : (PeekChar(1) == '=' ? new Token(TokenType.ADDASSIGNMENT, "+=", _line)  : new Token(TokenType.ADD, "+", _line));
             case '-':
-                return new Token(TokenType.SUB, "-", _line);
+                return PeekChar(1) == '-' ? new Token(TokenType.DECREMENT, "--", _line) :  (PeekChar(1) == '=' ? new Token(TokenType.SUBASSIGNMENT, "-=", _line) :  new Token(TokenType.SUB, "-", _line));
             case '*':
-                return new Token(TokenType.MUL, "*", _line);
+                return PeekChar(1) == '=' ? new Token(TokenType.MULASSIGNMENT, "*=", _line) : new Token(TokenType.MUL, "*", _line);
             case '/':
-                return new Token(TokenType.DIV, "/", _line);
+                return PeekChar(1) == '=' ? new Token(TokenType.DIVASSIGNMENT, "/=", _line) : new Token(TokenType.DIV, "/", _line);
             case '%':
-                return new Token(TokenType.MOD, "%", _line);
+                return PeekChar(1) == '=' ? new Token(TokenType.MODASSIGNMENT, "%=", _line) : new Token(TokenType.MOD, "%", _line);
             case '>':
                 return PeekChar(1) == '=' ? new Token(TokenType.GTEQ, ">=", _line) : new Token(TokenType.GREATERTHAN, ">", _line);
             case '<':
@@ -596,6 +602,31 @@ public class Lexer
             return '\0';
         }
         return _code[peekIndex];
+    }
+
+    private static int addIndex(char currentChar)
+    {
+        switch (currentChar)
+        {
+            case '+':
+            case '-':
+            case '*':
+            case '/':
+            case '%':
+                if (PeekChar(1) == '=') return 2;
+                return 1;
+            case '=':
+                if (PeekChar(1) == '=') return 2;
+                return 1;
+            case '>':
+                if (PeekChar(1) == '=') return 2;
+                return 1;
+            case '<':
+                if (PeekChar(1) == '=' || PeekChar(1) == '>') return 2;
+                return 1;
+            default:
+                return 1;
+        }
     }
     #endregion HELPER METHODS
 }
