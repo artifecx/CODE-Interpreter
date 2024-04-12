@@ -47,6 +47,26 @@ namespace Interpreter
         }
     }
 
+    public class PostIncrementStatement : Statement
+    {
+        public Variable Variable { get; }
+
+        public PostIncrementStatement(Variable variable)
+        {
+            Variable = variable;
+        }
+    }
+
+    public class PostDecrementStatement : Statement
+    {
+        public Variable Variable { get; }
+
+        public PostDecrementStatement(Variable variable)
+        {
+            Variable = variable;
+        }
+    }
+
     public class IfStatement : Statement
     {
         public Expression Condition { get; }
@@ -96,7 +116,6 @@ namespace Interpreter
     public class BreakStatement : Statement { }
 
     public class ContinueStatement : Statement { }
-
 
     public abstract class Expression : ASTNode { }
 

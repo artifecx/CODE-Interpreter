@@ -151,6 +151,12 @@ namespace Interpreter
                     if (assign.Operator.Type != TokenType.ASSIGNMENT) assignValue = EvaluateBinaryExpression(variableValue, assign.Operator, assignValue);
                     context.SetVariable(assign.Variable.Name, assignValue);
                     break;
+                case PostIncrementStatement postIncrement:
+                    IncrementVariable(postIncrement.Variable);
+                    break;
+                case PostDecrementStatement postDecrement:
+                    DecrementVariable(postDecrement.Variable);
+                    break;
                 case InputStatement inputStmt:
                     foreach (var variable in inputStmt.Variables)
                     {
@@ -503,6 +509,20 @@ namespace Interpreter
             }
         }
 
+        private void IncrementVariable(Variable variable)
+        {
+            object value = context.GetVariable(variable.Name);
+            if (value is int intValue) context.SetVariable(variable.Name, intValue + 1);
+            else throw new EvaluatorException("Can only use increment operator on integers.");
+        }
+
+        private void DecrementVariable(Variable variable)
+        {
+            object value = context.GetVariable(variable.Name);
+            if (value is int intValue) context.SetVariable(variable.Name, intValue - 1);
+            else throw new EvaluatorException("Can only use decrement operator on integers.");
+        }
+
         private string ConvertToString(object value)
         {
             return value switch
@@ -521,6 +541,7 @@ namespace Interpreter
                 TokenType.FLOAT => 0.0f,
                 TokenType.CHAR => '\0',
                 TokenType.BOOL => false,
+                TokenType.STRING => "",
                 _ => null
             };
         }

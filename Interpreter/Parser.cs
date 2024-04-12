@@ -118,6 +118,19 @@ public class Parser
             {
                 throw new ParseException($"Error at line: {Peek().Line}. Undeclared variable '{Peek().Value}'.");
             }
+
+            if (Match(TokenType.IDENTIFIER))
+            {
+                Token identifierToken = Previous();
+                if (Match(TokenType.INCREMENT) || Match(TokenType.DECREMENT))
+                {
+                    TokenType operationType = Previous().Type;
+                    return operationType == TokenType.INCREMENT
+                           ? new PostIncrementStatement(new Variable(identifierToken.Value))
+                           : new PostDecrementStatement(new Variable(identifierToken.Value));
+                }
+                current--;
+            }
             
             return ParseAssignmentStatement();
         }
