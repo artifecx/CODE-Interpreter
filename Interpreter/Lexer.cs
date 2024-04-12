@@ -86,15 +86,14 @@ public enum TokenType
     MULASSIGNMENT,      // *=
     DIVASSIGNMENT,      // /=
 
-    // not done yet
+    STRING,             // String data type, can be used to store multiple characters
     BREAK,              // Break out of loop
     CONTINUE,           // Skip to next iteration
-  
+
+    // not done yet
     SWITCH,             // Switch case
     DO,                 // Do while loop
     FOR,                // For loop
-
-    STRING,             // String data type, can be used to store multiple characters
 
     FUNCTION,           // Function keyword, used to define functions
 }
@@ -144,6 +143,7 @@ public class Lexer
         {"FLOAT", TokenType.FLOAT},
         {"TRUE", TokenType.TRUE},
         {"FALSE", TokenType.FALSE},
+        {"STRING", TokenType.STRING },
 
         {"AND", TokenType.AND},
         {"OR", TokenType.OR},

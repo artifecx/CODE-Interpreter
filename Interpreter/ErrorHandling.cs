@@ -20,4 +20,9 @@ namespace Interpreter
     {
         public LexerException(string message) : base(message) { }
     }
+
+    public class BreakException : Exception { }
+
+    public class ContinueException : Exception { }
+
 }

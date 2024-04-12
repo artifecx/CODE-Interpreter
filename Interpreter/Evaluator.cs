@@ -82,6 +82,7 @@ namespace Interpreter
                 case TokenType.FLOAT: return Convert.ToSingle(value);
                 case TokenType.CHAR: return Convert.ToChar(value);
                 case TokenType.BOOL: return Convert.ToBoolean(value);
+                case TokenType.STRING: return value.ToString();
                 default: return value;
             }
         }
@@ -98,6 +99,8 @@ namespace Interpreter
                     return value.ToString().Length == 1;
                 case TokenType.BOOL:
                     return bool.TryParse(value.ToString(), out _);
+                case TokenType.STRING:
+                    return value is string;
                 default:
                     return false;
             }
@@ -124,7 +127,10 @@ namespace Interpreter
             }
             catch (Exception ex)
             {
+                Console.Clear(); // :D
                 Console.WriteLine(ex.Message);
+                Environment.Exit(1);
+                return;
             }
         }
 
@@ -180,12 +186,26 @@ namespace Interpreter
                 case WhileStatement whileStmt:
                     while ((bool)EvaluateExpression(whileStmt.Condition))
                     {
-                        foreach (var bodyStmt in whileStmt.Body)
+                        try { 
+                            foreach (var bodyStmt in whileStmt.Body)
+                            {
+                                ExecuteStatement(bodyStmt);
+                            }
+                        }
+                        catch (ContinueException)
                         {
-                            ExecuteStatement(bodyStmt);
+                            continue;
+                        }
+                        catch (BreakException)
+                        {
+                            break;
                         }
                     }
                     break;
+                case BreakStatement:
+                    throw new BreakException();
+                case ContinueStatement:
+                    throw new ContinueException();
                 default:
                     throw new NotImplementedException($"Execution not implemented for statement type {statement.GetType().Name}");
             }
@@ -364,6 +384,15 @@ namespace Interpreter
                     case ">=": return leftInt >= rightInt;
                     case "<=": return leftInt <= rightInt;
                 }
+            }
+
+            if ((left is char leftChar && right is char rightChar) && (operation == "==" || operation == "<>"))
+            {
+                return operation == "==" ? left.Equals(right) : !left.Equals(right);
+            }
+            if ((left is string leftString && right is string rightString) && (operation == "==" || operation == "<>"))
+            {
+                return operation == "==" ? leftString.Equals(rightString) : !leftString.Equals(rightString);
             }
 
             throw new Exception($"Invalid operands for operation '{operation}'.");

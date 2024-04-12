@@ -11,6 +11,7 @@ public class Parser
     private readonly List<Statement> statements = new List<Statement>();
     private int current = 0;
     private bool variableDeclarationPhase = true;
+    private bool insideLoop = false;
 
     private Dictionary<TokenType, Func<Expression, FunctionCallExpression>> functionMap =
         new Dictionary<TokenType, Func<Expression, FunctionCallExpression>>
@@ -82,7 +83,7 @@ public class Parser
 
     private Statement ParseStatement()
     {
-        if (Match(TokenType.INT, TokenType.CHAR, TokenType.BOOL, TokenType.FLOAT))
+        if (Match(TokenType.INT, TokenType.CHAR, TokenType.BOOL, TokenType.FLOAT, TokenType.STRING))
         {
             if (!variableDeclarationPhase)
             {
@@ -95,6 +96,8 @@ public class Parser
         if (Match(TokenType.WHILE)) return ParseWhileStatement();
         if (Match(TokenType.DISPLAY)) return ParseOutputStatement();
         if (Match(TokenType.SCAN)) return ParseInputStatement();
+        if (Match(TokenType.BREAK)) return ParseBreakStatement();
+        if (Match(TokenType.CONTINUE)) return ParseContinueStatement();
 
         if (Check(TokenType.IDENTIFIER) || Check(TokenType.COMMA)) // added comma to parse multiple assignments in one line
         {
@@ -123,7 +126,7 @@ public class Parser
             throw new ParseException($"Error at line: {Peek().Line}. Unknown character '{Peek().Value}'");
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. Expect statement.");
+        throw new ParseException($"Error at line: {Peek().Line}. {Peek().Value} Expect statement.");
     }
 
     private DeclarationStatement ParseDeclarationStatement()
@@ -192,6 +195,8 @@ public class Parser
 
     private IfStatement ParseIfStatement()
     {
+        variableDeclarationPhase = false;
+
         Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after 'IF'.");
         Expression condition = ParseExpression();
         Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after if condition.");
@@ -220,6 +225,8 @@ public class Parser
 
     private WhileStatement ParseWhileStatement()
     {
+        variableDeclarationPhase = false;
+
         Consume(TokenType.OPENPARENTHESIS, "Expect '(' after 'WHILE'.");
         Expression condition = ParseExpression();
         Consume(TokenType.CLOSEPARENTHESIS, "Expect ')' after condition.");
@@ -228,7 +235,9 @@ public class Parser
         //Console.WriteLine($"Current: {Peek().Value}, Previous: {Previous().Value}");
 
         Consume(TokenType.BEGINWHILE, "Expect 'BEGIN WHILE'.");
+        insideLoop = true;
         List<Statement> body = ParseBlock(TokenType.ENDWHILE);
+        insideLoop = false;
 
         return new WhileStatement(condition, body);
     }
@@ -256,6 +265,8 @@ public class Parser
 
     private OutputStatement ParseOutputStatement()
     {
+        variableDeclarationPhase = false;
+
         Consume(TokenType.COLON, $"Error at line: {Peek().Line}. Expected ':' after DISPLAY statement.");
 
         var expressions = new List<Expression>();
@@ -294,6 +305,8 @@ public class Parser
 
     private InputStatement ParseInputStatement()
     {
+        variableDeclarationPhase = false;
+
         Consume(TokenType.COLON, $"Error at line: {Peek().Line}. Expected ':' after SCAN statement.");
 
         var variables = new List<Variable>();
@@ -313,6 +326,20 @@ public class Parser
         if (Check(TokenType.IDENTIFIER)) throw new ParseException($"Error at line: {Peek().Line}. Expect comma between variables, received '{Peek().Value}'.");
 
         return new InputStatement(variables);
+    }
+
+    private Statement ParseBreakStatement()
+    {
+        if (!insideLoop)
+            throw new ParseException($"Error at line: {Peek().Line}. BREAK not inside a loop.");
+        return new BreakStatement();
+    }
+
+    private Statement ParseContinueStatement()
+    {
+        if (!insideLoop)
+            throw new ParseException($"Error at line: {Peek().Line}. CONTINUE not inside a loop.");
+        return new ContinueStatement();
     }
 
     private Expression ParseExpression()
@@ -452,10 +479,8 @@ public class Parser
         if (Match(TokenType.TRUE)) return new LiteralExpression(true);
         if (Match(TokenType.INTEGERLITERAL)) return new LiteralExpression(int.Parse(Previous().Value));
         if (Match(TokenType.FLOATLITERAL)) return new LiteralExpression(float.Parse(Previous().Value));
-        if (Match(TokenType.STRINGLITERAL, TokenType.CHARACTERLITERAL))
-        {
-            return new LiteralExpression(Previous().Value);
-        }
+        if (Match(TokenType.CHARACTERLITERAL)) return new LiteralExpression(Convert.ToChar(Previous().Value));
+        if (Match(TokenType.STRINGLITERAL)) return new LiteralExpression(Previous().Value);
         
         if (Match(TokenType.PI)) return new LiteralExpression(Math.PI);
 
@@ -513,6 +538,7 @@ public class Parser
             throw new ParseException($"Error at line: {Peek().Line}. Unsupported function '{functionName.Value}'.");
         }
     }
+
 
     #region HELPER METHODS
     private bool Match(params TokenType[] types)

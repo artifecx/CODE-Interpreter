@@ -93,6 +93,11 @@ namespace Interpreter
         }
     }
 
+    public class BreakStatement : Statement { }
+
+    public class ContinueStatement : Statement { }
+
+
     public abstract class Expression : ASTNode { }
 
     public class BinaryExpression : Expression
