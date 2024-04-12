@@ -404,6 +404,16 @@ namespace Interpreter
                     _ => throw new Exception("Unary '+' expects a numeric operand.")
                 },
                 TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"{right} Unary 'NOT' expects a boolean operand."),
+                TokenType.INCREMENT => right switch
+                {
+                    int rightInt => ++rightInt,
+                    _ => throw new Exception("Can only use increment operator on integers.")
+                },
+                TokenType.DECREMENT => right switch
+                {
+                    int rightInt => --rightInt,
+                    _ => throw new Exception("Can only use decrement operator on integers.")
+                },
                 _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
             };
         }

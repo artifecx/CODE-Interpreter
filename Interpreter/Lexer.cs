@@ -78,8 +78,8 @@ public enum TokenType
     TOSTRING,           // Convert to string, convert anything to string
     TYPE,               // Type keyword, used to define data types
 
-    INCREMENT,          // i++, ++i
-    DECREMENT,          // i--, --i
+    INCREMENT,          // i++
+    DECREMENT,          // i--
     MODASSIGNMENT,      // %=
     ADDASSIGNMENT,      // +=
     SUBASSIGNMENT,      // -=
@@ -614,6 +614,8 @@ public class Lexer
             case '/':
             case '%':
                 if (PeekChar(1) == '=') return 2;
+                if (PeekChar(1) == '+' && currentChar == '+') return 2;
+                if (PeekChar(1) == '-' && currentChar == '-') return 2;
                 return 1;
             case '=':
                 if (PeekChar(1) == '=') return 2;

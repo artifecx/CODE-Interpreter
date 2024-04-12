@@ -459,7 +459,7 @@ public class Parser
         
         if (Match(TokenType.PI)) return new LiteralExpression(Math.PI);
 
-        if (Match(TokenType.CEIL, TokenType.FLOOR, TokenType.TOINT, TokenType.TOFLOAT, TokenType.TOSTRING, TokenType.TYPE))
+        if (functionMap.ContainsKey(Peek().Type) && Match(Peek().Type))
         {
             return ParseFunctionCall();
         }
@@ -470,6 +470,14 @@ public class Parser
             {
                 return ParseFunctionCall();
             }
+
+            VariableExpression varExpr = new VariableExpression(Previous().Value);
+            if (Match(TokenType.INCREMENT) || Match(TokenType.DECREMENT))
+            {
+                Token operatorToken = Previous();
+                return new UnaryExpression(operatorToken, varExpr);
+            }
+
             return new VariableExpression(Previous().Value);
         }
 
@@ -480,7 +488,7 @@ public class Parser
             return new GroupingExpression(expr);
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. Expect expression.");
+        throw new ParseException($"Error at line: {Peek().Line}. {Peek().Value} Expect expression.");
     }
 
     private Expression ParseFunctionCall()
