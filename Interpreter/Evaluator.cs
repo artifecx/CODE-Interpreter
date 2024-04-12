@@ -359,6 +359,7 @@ namespace Interpreter
 
             if (left is float leftFloat && right is float rightFloat)
             {
+                if (rightFloat == 0 && (operation == "/" || operation == "%")) throw new Exception("Error: Division by zero.");
                 switch (operation)
                 {
                     case "+": return leftFloat + rightFloat;
@@ -376,11 +377,12 @@ namespace Interpreter
             }
             if (left is int leftInt && right is int rightInt)
             {
+                if (rightInt == 0 && (operation == "/" || operation == "%")) throw new Exception("Error: Division by zero.");
                 switch (operation)
                 {
-                    case "+": return leftInt + rightInt;
-                    case "-": return leftInt - rightInt;
-                    case "*": return leftInt * rightInt;
+                    case "+": return HandleIntegerOverflow(leftInt, rightInt, operation);
+                    case "-": return HandleIntegerOverflow(leftInt, rightInt, operation);
+                    case "*": return HandleIntegerOverflow(leftInt, rightInt, operation);
                     case "/": return leftInt / rightInt;
                     case "%": return leftInt % rightInt;
                     case "==": return leftInt == rightInt;
@@ -441,12 +443,12 @@ namespace Interpreter
                 TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"{right} Unary 'NOT' expects a boolean operand."),
                 TokenType.INCREMENT => right switch
                 {
-                    int rightInt => ++rightInt,
+                    int rightInt => HandleIntegerOverflow(rightInt, 1, "+"),
                     _ => throw new Exception("Can only use increment operator on integers.")
                 },
                 TokenType.DECREMENT => right switch
                 {
-                    int rightInt => --rightInt,
+                    int rightInt => HandleIntegerOverflow(rightInt, 1, "-"),
                     _ => throw new Exception("Can only use decrement operator on integers.")
                 },
                 _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
@@ -512,15 +514,33 @@ namespace Interpreter
         private void IncrementVariable(Variable variable)
         {
             object value = context.GetVariable(variable.Name);
-            if (value is int intValue) context.SetVariable(variable.Name, intValue + 1);
+            if (value is int intValue) context.SetVariable(variable.Name, HandleIntegerOverflow(intValue, 1, "+"));
             else throw new EvaluatorException("Can only use increment operator on integers.");
         }
 
         private void DecrementVariable(Variable variable)
         {
             object value = context.GetVariable(variable.Name);
-            if (value is int intValue) context.SetVariable(variable.Name, intValue - 1);
+            if (value is int intValue) context.SetVariable(variable.Name, HandleIntegerOverflow(intValue, 1, "-"));
             else throw new EvaluatorException("Can only use decrement operator on integers.");
+        }
+
+        private object HandleIntegerOverflow(int left, int right, string operation)
+        {
+            try
+            {
+                return operation switch
+                {
+                    "+" => checked(left + right),
+                    "-" => checked(left - right),
+                    "*" => checked(left * right),
+                    _ => left / right
+                };
+            }
+            catch (OverflowException)
+            {
+                throw new Exception("Error: Integer overflow.");
+            }
         }
 
         private string ConvertToString(object value)
