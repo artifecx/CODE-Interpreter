@@ -9,7 +9,7 @@
 - Postfix increment and decrement: syntax: <_variable><_operator>
   - ++ -> adds 1 to the variable value
   - -- -> subtracts 1 to the variable value
-- Character and string comparison: syntax: <variable/literal><_operator><variable/literal>
+- Character, string, and boolean comparison: syntax: <variable/literal><_operator><variable/literal>
   - == -> returns TRUE if both values are equal, otherwise FALSE
   - <> -> returns TRUE if both values are not equal, otherwise FALSE
 
@@ -26,5 +26,5 @@
 ### Parsing and Type functions:
 - TYPE(<variable/literal>) - returns the data type of whatever is inside the parenthesis
 - TOSTRING(<variable/literal>) - converts the input to string, converts any data type to string
-- TOINT(<variable/literal>) - converts the input to int, valid conversions from: float, numerical string/char
+- TOINT(<variable/literal>) - converts the input to int, valid conversions from: float, numerical string/char, char to ascii decimal number, e.g. TOINT('a') -> 97 in ASCII
 - TOFLOAT(<variable/literal>) - converts the input to float, valid conversions from: int, numerical string/char
