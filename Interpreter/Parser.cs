@@ -48,6 +48,8 @@ public class Parser
     {
         int beginCodeIndex = tokens.FindIndex(token => token.Type == TokenType.BEGINCODE);
         int endCodeIndex = tokens.FindLastIndex(token => token.Type == TokenType.ENDCODE);
+        
+        ConsumeNewlines();
 
         if (beginCodeIndex == -1 || endCodeIndex == -1)
         {
@@ -479,7 +481,7 @@ public class Parser
         if (Match(TokenType.NOT))
         {
             Token operatorToken = Previous();
-            Expression right = ParseExpression();
+            Expression right = ParseUnary();
             return new UnaryExpression(operatorToken, right);
         }
 

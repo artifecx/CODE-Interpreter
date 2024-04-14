@@ -26,12 +26,12 @@ namespace Interpreter
             }
             catch
             {
-                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value {value}.");
+                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{value}' type '{value.GetType().Name.ToUpper()}'.");
             }
 
             if (!IsTypeCompatible(value, type))
             {
-                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value {value}.");
+                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{value}' type {value.GetType().Name.ToUpper()}.");
             }
 
             variables[name] = (typedValue, type);
@@ -107,7 +107,7 @@ namespace Interpreter
         }
     }
 
-    public class Interpreter
+    public class InterpreterClass
     {
         private readonly ExecutionContext context = new();
 
@@ -167,10 +167,7 @@ namespace Interpreter
                     }
                     break;
                 case OutputStatement output:
-                    foreach (var expression in output.Expressions)
-                    {
-                        Console.Write(EvaluateExpression(expression));
-                    }
+                    foreach (var expression in output.Expressions) Console.Write(ConvertToString(EvaluateExpression(expression)));
                     break;
                 case IfStatement ifStmt:
                     bool condition = (bool)EvaluateExpression(ifStmt.Condition);
@@ -265,19 +262,17 @@ namespace Interpreter
 
         private string EvaluateTypeExpression(object value)
         {
-            if (value is int)
-                return "INT";
-            if (value is float || value is double)
-                return "FLOAT";
-            if (value is bool)
-                return "BOOL";
-            if (value is string)
-                return "STRING";
-            if (value is char)
-                return "CHAR";
-            if (value is null)
-                return "NULL";
-            return "UNKNOWN";
+            return value switch
+            {
+                int _ => "INT",
+                float _ => "FLOAT",
+                double _ => "FLOAT",
+                bool _ => "BOOL",
+                string _ => "STRING",
+                char _ => "CHAR",
+                null => "NULL",
+                _ => "UNKNOWN"
+            };
         }
 
         private object EvaluateBinaryExpression(object left, Token operatorToken, object right)
@@ -336,18 +331,79 @@ namespace Interpreter
             };
         }
 
-        private object ConvertIfString(object value)
+        private object EvaluateLogicalExpression(object left, Token operatorToken, object right)
         {
-            if (value is string stringValue)
+            if (left is bool leftBool && right is bool rightBool)
             {
-                if (int.TryParse(stringValue, out int intValue))
+                return operatorToken.Type switch
                 {
-                    return intValue;
-                }
-                if (float.TryParse(stringValue, out float floatValue))
+                    TokenType.AND => leftBool && rightBool,
+                    TokenType.OR => leftBool || rightBool,
+                    _ => throw new NotImplementedException($"Logical operator {operatorToken.Type} is not implemented."),
+                };
+            }
+
+            throw new Exception("Invalid operands for logical expression.");
+        }
+
+        private object EvaluateUnaryExpression(UnaryExpression expr)
+        {
+            object right = EvaluateExpression(expr.Right);
+            right = EnsureCorrectType(right, expr.Operator.Type);
+
+            return expr.Operator.Type switch
+            {
+                TokenType.SUB => right switch
                 {
-                    return floatValue;
-                }
+                    float rightFloat => -rightFloat,
+                    int rightInt => -rightInt,
+                    _ => throw new Exception("Unary '-' expects a numeric operand.")
+                },
+                TokenType.ADD => right switch
+                {
+                    float rightFloat => rightFloat,
+                    int rightInt => rightInt,
+                    _ => throw new Exception("Unary '+' expects a numeric operand.")
+                },
+                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"{right} Unary 'NOT' expects a boolean operand."),
+                TokenType.INCREMENT => right switch
+                {
+                    int rightInt => HandleIntegerOverflow(rightInt, 1, "+"),
+                    _ => throw new Exception("Can only use increment operator on integers.")
+                },
+                TokenType.DECREMENT => right switch
+                {
+                    int rightInt => HandleIntegerOverflow(rightInt, 1, "-"),
+                    _ => throw new Exception("Can only use decrement operator on integers.")
+                },
+                _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
+            };
+        }
+
+        #region HELPER METHODS
+        private object EnsureCorrectType(object value, TokenType operationType)
+        {
+            switch (operationType)
+            {
+                case TokenType.SUB or TokenType.ADD:
+                    if (value is string stringValue)
+                    {
+                        if (float.TryParse(stringValue, out float floatValue))
+                        {
+                            return floatValue;
+                        }
+                        if (int.TryParse(stringValue, out int intValue))
+                        {
+                            return intValue;
+                        }
+                    }
+                    break;
+                case TokenType.NOT:
+                    if (value is string strValue && bool.TryParse(strValue, out bool boolValue))
+                    {
+                        return boolValue;
+                    }
+                    break;
             }
             return value;
         }
@@ -402,113 +458,12 @@ namespace Interpreter
             {
                 return operation == "==" ? leftString.Equals(rightString) : !leftString.Equals(rightString);
             }
+            if ((left is bool leftBool && right is bool rightBool) && (operation == "==" || operation == "<>"))
+            {
+                return operation == "==" ? leftBool == rightBool : leftBool != rightBool;
+            }
 
             throw new Exception($"Invalid operands for operation '{operation}'.");
-        }
-
-        private object EvaluateLogicalExpression(object left, Token operatorToken, object right)
-        {
-            if (left is bool leftBool && right is bool rightBool)
-            {
-                return operatorToken.Type switch
-                {
-                    TokenType.AND => leftBool && rightBool,
-                    TokenType.OR => leftBool || rightBool,
-                    _ => throw new NotImplementedException($"Logical operator {operatorToken.Type} is not implemented."),
-                };
-            }
-
-            throw new Exception("Invalid operands for logical expression.");
-        }
-
-        private object EvaluateUnaryExpression(UnaryExpression expr)
-        {
-            object right = EvaluateExpression(expr.Right);
-            right = EnsureCorrectType(right, expr.Operator.Type);
-
-            return expr.Operator.Type switch
-            {
-                TokenType.SUB => right switch
-                {
-                    float rightFloat => -rightFloat,
-                    int rightInt => -rightInt,
-                    _ => throw new Exception("Unary '-' expects a numeric operand.")
-                },
-                TokenType.ADD => right switch
-                {
-                    float rightFloat => rightFloat,
-                    int rightInt => rightInt,
-                    _ => throw new Exception("Unary '+' expects a numeric operand.")
-                },
-                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"{right} Unary 'NOT' expects a boolean operand."),
-                TokenType.INCREMENT => right switch
-                {
-                    int rightInt => HandleIntegerOverflow(rightInt, 1, "+"),
-                    _ => throw new Exception("Can only use increment operator on integers.")
-                },
-                TokenType.DECREMENT => right switch
-                {
-                    int rightInt => HandleIntegerOverflow(rightInt, 1, "-"),
-                    _ => throw new Exception("Can only use decrement operator on integers.")
-                },
-                _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
-            };
-        }
-
-
-        private object EnsureCorrectType(object value, TokenType operationType)
-        {
-            switch (operationType)
-            {
-                case TokenType.SUB or TokenType.ADD:
-                    if (value is string stringValue)
-                    {
-                        if (float.TryParse(stringValue, out float floatValue))
-                        {
-                            return floatValue;
-                        }
-                        if (int.TryParse(stringValue, out int intValue))
-                        {
-                            return intValue;
-                        }
-                    }
-                    break;
-                case TokenType.NOT:
-                    if (value is string strValue && bool.TryParse(strValue, out bool boolValue))
-                    {
-                        return boolValue;
-                    }
-                    break;
-            }
-            return value;
-        }
-
-        // for function call TOINT, error if trying to convert a float to int if I use Convert.ToInt32()
-        private int ConvertToInt(object value)
-        {
-            if (value is float floatValue)
-            {
-                return (int)floatValue;
-            }
-            else if (value is double doubleValue)
-            {
-                return (int)doubleValue;
-            }
-            else if (value is string stringValue)
-            {
-                if (float.TryParse(stringValue, out float result))
-                {
-                    return (int)result;
-                }
-                else
-                {
-                    throw new Exception($"Cannot convert '{stringValue}' to int.");
-                }
-            }
-            else
-            {
-                return Convert.ToInt32(value);
-            }
         }
 
         private void IncrementVariable(Variable variable)
@@ -543,11 +498,68 @@ namespace Interpreter
             }
         }
 
+        private int ConvertToInt(object value)
+        {
+            if (value is float floatValue)
+            {
+                return (int)floatValue;
+            }
+            if (value is double doubleValue)
+            {
+                return (int)doubleValue;
+            }
+            if (value is string stringValue)
+            {
+                if (float.TryParse(stringValue, out float result))
+                {
+                    return (int)result;
+                }
+                else
+                {
+                    throw new Exception($"Cannot convert '{stringValue}' to int.");
+                }
+            }
+            if (value is char charValue)
+            {
+                if (char.IsDigit(charValue))
+                {
+                    return charValue - '0';
+                }
+                else
+                {
+                    // ASCII representation
+                    Convert.ToInt32(value);
+                }
+            }
+            return Convert.ToInt32(value);
+        }
+
+        private object ConvertIfString(object value)
+        {
+            if (value is string stringValue)
+            {
+                if (int.TryParse(stringValue, out int intValue))
+                {
+                    return intValue;
+                }
+                if (float.TryParse(stringValue, out float floatValue))
+                {
+                    return floatValue;
+                }
+                if (double.TryParse(stringValue, out double doubleValue))
+                {
+                    return doubleValue;
+                }
+            }
+            return value;
+        }
+
         private string ConvertToString(object value)
         {
             return value switch
             {
                 bool boolValue => boolValue ? "TRUE" : "FALSE",
+                float floatValue => floatValue % 1 == 0 ? $"{floatValue}.0" : floatValue.ToString(),
                 null => "",
                 _ => value.ToString()
             };
@@ -565,5 +577,6 @@ namespace Interpreter
                 _ => null
             };
         }
+        #endregion HELPER METHODS
     }
 }
