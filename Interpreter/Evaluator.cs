@@ -26,12 +26,12 @@ namespace Interpreter
             }
             catch
             {
-                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{value}' type '{value.GetType().Name.ToUpper()}'.");
+                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type '{RetrieveType(value)}'.");
             }
 
             if (!IsTypeCompatible(value, type))
             {
-                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{value}' type {value.GetType().Name.ToUpper()}.");
+                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type {RetrieveType(value)}.");
             }
 
             variables[name] = (typedValue, type);
@@ -59,12 +59,12 @@ namespace Interpreter
                 }
                 catch
                 {
-                    throw new Exception($"Type mismatch: Cannot assign value {value} to '{name}' of type {type}.");
+                    throw new Exception($"Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
                 }
 
                 if (!IsTypeCompatible(value, type))
                 {
-                    throw new Exception($"Type mismatch: Cannot assign value {value} to '{name}' of type {type}.");
+                    throw new Exception($"Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
                 }
 
                 variables[name] = (typedValue, type);
@@ -104,6 +104,19 @@ namespace Interpreter
                 default:
                     return false;
             }
+        }
+
+        private object RetrieveType(object value)
+        {
+            return value switch
+            {
+                int _ => "INT",
+                float _ => "FLOAT",
+                char _ => "CHAR",
+                bool _ => "BOOLEAN",
+                string _ => "STRING",
+                _ => value.GetType().Name.ToUpper()
+            };
         }
     }
 
@@ -554,7 +567,7 @@ namespace Interpreter
             return value;
         }
 
-        private string ConvertToString(object value)
+        public static string ConvertToString(object value)
         {
             return value switch
             {

@@ -417,7 +417,7 @@ internal class Program
             new TestCase {
                 Code = @"BEGIN CODE
                             INT a = 0
-                            WHILE (TRUE)
+                            WHILE (""TRUE"")
                             BEGIN WHILE
                                 DISPLAY: a & "" ""
                                 a = a + 1
@@ -573,7 +573,7 @@ internal class Program
             },
             new TestCase {
                 Code = @"BEGIN CODE
-                            BOOL a = TRUE, b = TRUE
+                            BOOL a = ""TRUE"", b = ""TRUE""
                             IF (a OR b)
                             BEGIN IF
                                 DISPLAY: ""Either true or false""
@@ -703,7 +703,7 @@ internal class Program
             new TestCase
             {
                 Code = @"BEGIN CODE
-                            BOOL a = TRUE, b = FALSE
+                            BOOL a = ""TRUE"", b = ""FALSE""
                             IF (a AND (NOT b OR a))
                             BEGIN IF
                                 DISPLAY: ""Complex logic passed""

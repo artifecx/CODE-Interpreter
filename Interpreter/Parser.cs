@@ -7,7 +7,7 @@ using Interpreter;
 public class Parser
 {
     private readonly List<Token> tokens;
-    private readonly HashSet<string> declaredVariables = new HashSet<string>();
+    private readonly Dictionary<string, TokenType> declaredVariables = new Dictionary<string, TokenType>();
     private readonly List<Statement> statements = new List<Statement>();
     private int current = 0;
     private bool variableDeclarationPhase = true;
@@ -116,7 +116,7 @@ public class Parser
                 variableDeclarationPhase = false;
             }
 
-            if (!declaredVariables.Contains(Peek().Value) && Check(TokenType.IDENTIFIER))
+            if (!declaredVariables.ContainsKey(Peek().Value) && Check(TokenType.IDENTIFIER))
             {
                 throw new ParseException($"Error at line: {Peek().Line}. Undeclared variable '{Peek().Value}'.");
             }
@@ -157,18 +157,39 @@ public class Parser
             }
 
             string name = Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Invalid variable name '{Peek().Value}'.").Value;
-            Expression initializer = null;
-            if (!declaredVariables.Add(name))
+            if (declaredVariables.ContainsKey(name))
             {
                 throw new ParseException($"Error at line: {Peek().Line}. Variable '{name}' already declared.");
             }
 
+            Expression initializer = null;
             if (Match(TokenType.ASSIGNMENT))
             {
                 initializer = ParseExpression();
             }
+
+            switch (type)
+            {
+                case TokenType.CHAR:
+                    if (!(initializer is LiteralExpression literal && literal.Value is char))
+                    {
+                        throw new ParseException($"Error at line: {Peek().Line}. Character variable '{name}' must be assigned a character literal using single quotes.");
+                    }
+                    break;
+                case TokenType.BOOL:
+                    if (initializer is LiteralExpression lit && lit.Value is string)
+                    {
+                        string boolValue = lit.Value.ToString();
+                        if (boolValue != "TRUE" && boolValue != "FALSE")
+                        {
+                            throw new ParseException($"Error at line: {Peek().Line}. Boolean values must be either 'TRUE' or 'FALSE' in all caps. Found: {boolValue}");
+                        }
+                    }
+                    break;
+            }
+
             variables.Add(new Variable(name, initializer));
-            declaredVariables.Add(name);
+            declaredVariables.Add(name, type);
         } while (Match(TokenType.COMMA));
 
         return new DeclarationStatement(type, variables);
@@ -202,8 +223,28 @@ public class Parser
             }
         }
 
+        if (IsReservedKeyword(Peek().Value))
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. Cannot assign reserved keyword '{Peek().Value}' to variable '{name.Value}'.");
+        }
+
         //Consume(TokenType.ASSIGNMENT, $"Error at line: {Peek().Line}. Expect '=' after variable name.");
         Expression value = ParseExpression();
+
+        if (name.Type == TokenType.IDENTIFIER && value is LiteralExpression literal && literal.Value is string)
+        {
+            if (GetVariableType(name.Value) == TokenType.BOOL) { 
+                string boolValue = literal.Value.ToString();
+                if (boolValue != "TRUE" && boolValue != "FALSE")
+                {
+                    throw new ParseException($"Error at line: {Peek().Line}. Boolean values must be either 'TRUE' or 'FALSE' in all caps. Found: {boolValue}");
+                }
+            }
+
+            if (GetVariableType(name.Value) == TokenType.CHAR) {
+                throw new ParseException($"Error at line: {Peek().Line}. Cannot assign a string literal to character variable '{Previous().Value}'. Use single quotes for characters.");
+            }
+        }
 
         return new AssignmentStatement(new Variable(name.Value), operatorToken, value);
     }
@@ -327,7 +368,7 @@ public class Parser
         var variables = new List<Variable>();
         do
         {
-            if(!declaredVariables.Contains(Peek().Value))
+            if(!declaredVariables.ContainsKey(Peek().Value))
             {
                 if (IsReservedKeyword(Peek().Value))
                 {
@@ -623,6 +664,15 @@ public class Parser
         {
             throw new ParseException($"Error at line: {Peek().Line}. {ex.Message}");
         }
+    }
+
+    public TokenType GetVariableType(string variableName)
+    {
+        if (declaredVariables.TryGetValue(variableName, out TokenType type))
+        {
+            return type;
+        }
+        throw new ParseException($"Error at line: {Peek().Line}. Undeclared variable '{variableName}'.");
     }
     #endregion HELPER METHODS
 }

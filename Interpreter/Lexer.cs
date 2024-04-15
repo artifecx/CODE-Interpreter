@@ -492,10 +492,12 @@ public class Lexer
         {
             return value == "BEGIN" ? CheckNextWord(TokenType.BEGIN, value) : CheckNextWord(TokenType.END, value);
         }
-        if (keywords.TryGetValue(value, out TokenType type))
+
+        if (keywords.TryGetValue(value, out TokenType type) && (value != "TRUE" && value != "FALSE"))
         {
             return new Token(type, value, _line);
         }
+
         return new Token(TokenType.IDENTIFIER, value, _line);
     }
 
