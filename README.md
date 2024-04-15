@@ -17,6 +17,7 @@
 - Within loops:
   - BREAK -> breaks the loop
   - CONTINUE -> skips the current loop iteration
+- STRING -> new data type that holds string literals
 
 ### Math functions:
 - PI - returns the floating point value of pi (up to 7 decimal places)
