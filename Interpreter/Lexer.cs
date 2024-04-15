@@ -266,7 +266,6 @@ public class Lexer
                         {
                             tokens.Add(new Token(TokenType.UNKNOWN, currentChar.ToString(), _line));
                             _index++;
-                            //throw new ArgumentException($"Unexpected character at index {_index}: {currentChar}");
                         }
                         break;
                 }

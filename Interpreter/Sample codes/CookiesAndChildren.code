@@ -1,0 +1,24 @@
+# Given (1) the number of cookies you have baked and (2) the number of children, 
+# calculate the number of cookies that you additionally need to bake to give each child one more. 
+# Note: Assume that you will always have a leftover.
+
+# Example 01:
+# Given:
+# ·  number_of_cookies = 57
+# ·  number_of_children = 7
+
+BEGIN CODE
+	INT cookies, children, additional, total, ck_ch, rem
+
+	DISPLAY: "Enter the number of cookies: "
+	SCAN: cookies
+	DISPLAY: "Enter the number of children: "
+	SCAN: children
+
+	ck_ch = cookies / children
+	rem = cookies % children
+	additional = children-rem
+	total = ck_ch + 1
+
+	DISPLAY: "I need to bake " & additional & " additional cookies to give each child " & total & " cookies."
+END CODE

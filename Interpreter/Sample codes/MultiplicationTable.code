@@ -1,0 +1,19 @@
+BEGIN CODE
+	INT size
+	INT r = 1, c = 1
+
+	DISPLAY: "Enter size: "
+	SCAN: size
+
+	WHILE (r <= size)
+	BEGIN WHILE
+		WHILE (c <= size)
+		BEGIN WHILE
+			DISPLAY: c*r & " | "
+			c++
+		END WHILE
+		DISPLAY: $$
+		r++
+		c = 1
+	END WHILE
+END CODE

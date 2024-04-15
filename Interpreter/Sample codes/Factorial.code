@@ -1,0 +1,15 @@
+BEGIN CODE
+	INT n
+	INT factorial = 1, i = 2
+
+	DISPLAY: "Enter a number: "
+	SCAN: n
+
+	WHILE (i <= n)
+	BEGIN WHILE
+		factorial *= i
+		i++
+	END WHILE
+
+	DISPLAY: "Factorial of " & n & " is " & factorial
+END CODE

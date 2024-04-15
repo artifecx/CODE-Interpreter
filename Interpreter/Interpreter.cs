@@ -9,7 +9,8 @@ internal class Program
     {
         Console.WriteLine("Choose an option:");
         Console.WriteLine("1 - Run using code");
-        Console.WriteLine("2 - Run test cases");
+        Console.WriteLine("2 - Run sample codes");
+        Console.WriteLine("3 - Run test cases");
         Console.Write("Option: ");
 
         var option = Console.ReadLine();
@@ -20,6 +21,10 @@ internal class Program
                 ManualTyping();
                 break;
             case "2":
+                Console.WriteLine();
+                SampleCodes();
+                break;
+            case "3":
                 Console.WriteLine();
                 TestCases();
                 break;
@@ -34,7 +39,7 @@ internal class Program
         string str_directory = Environment.CurrentDirectory.ToString();
         var projectfolder = Directory.GetParent(Directory.GetParent(Directory.GetParent(str_directory).ToString()).ToString());
 
-        string filename = @"sample.code";
+        string filename = @"program.code";
         string filePath = Path.Combine(projectfolder.ToString(), filename);
 
         if (File.Exists(filePath))
@@ -61,6 +66,59 @@ internal class Program
         else
         {
             Console.WriteLine($"File not found: {filePath}");
+        }
+        Console.WriteLine();
+    }
+
+    static void SampleCodes()
+    {
+        while (true)
+        {
+            string str_directory = Environment.CurrentDirectory.ToString();
+            var projectfolder = Directory.GetParent(Directory.GetParent(Directory.GetParent(str_directory).ToString()).ToString());
+            string sampleCodesFolder = Path.Combine(projectfolder.ToString(), "Sample codes");
+
+            string[] files = Directory.GetFiles(sampleCodesFolder.ToString());
+            if (files.Length == 0)
+            {
+                Console.WriteLine("No files found in the directory.");
+                return;
+            }
+
+            Console.WriteLine("Select a file to execute:");
+            for (int i = 0; i < files.Length; i++)
+            {
+                Console.WriteLine($"{i + 1}: {Path.GetFileName(files[i])}");
+            }
+
+            int fileChoice;
+            do
+            {
+                Console.Write("Enter the number of the file: ");
+            } while (!int.TryParse(Console.ReadLine(), out fileChoice) || fileChoice < 1 || fileChoice > files.Length);
+
+            Console.WriteLine();
+
+            string selectedFile = files[fileChoice - 1];
+            string filePath = Path.Combine(sampleCodesFolder.ToString(), Path.GetFileName(selectedFile));
+
+            string code = File.ReadAllText(filePath);
+
+            var lexer = new Lexer();
+            List<Token> tokens = Lexer.Tokenize(code);
+
+            var parser = new Parser(tokens);
+            var ast = parser.Parse();
+
+            var interpreter = new InterpreterClass();
+            interpreter.Interpret(ast);
+
+            Console.WriteLine();
+
+            Console.Write("\nDo you want to run another file? (Y/N): ");
+            string response = Console.ReadLine();
+            if (response.ToUpper() != "Y") break;
+            else Console.Clear();
         }
     }
 
@@ -750,6 +808,15 @@ internal class Program
                             END WHILE
                         END CODE",
                 ExpectedOutput = "1 3 5"
+            },
+            new TestCase
+            {
+                Code = @"BEGIN CODE
+                            INT x
+                            x = 5 + 5 * 4 / 2 + (5 * 4 / 2)
+                            DISPLAY: x
+                         END CODE",
+                ExpectedOutput = "25"
             },
         };
     }

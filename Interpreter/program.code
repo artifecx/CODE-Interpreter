@@ -1,0 +1,10 @@
+# integer overflow test
+# BEGIN CODE
+#    INT a = 2147483647
+#    a += 1
+# END CODE
+
+# invalid data type
+# BEGIN CODE
+#   int a
+# END CODE

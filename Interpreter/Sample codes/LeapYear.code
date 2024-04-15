@@ -1,0 +1,35 @@
+# A year is considered a leap year when it is either:
+# (a) divisible by 4, but not 100 or
+# (b) divisible by both 4, 100, and 400 at the same time
+
+BEGIN CODE
+	INT year
+	BOOL isLeapYear = "FALSE"
+
+	DISPLAY: "Enter year: "
+	SCAN: year
+
+	# calculate if the year is a leap year
+	IF (year % 4 == 0 AND year % 100 >= 1)
+	BEGIN IF
+		isLeapYear = "TRUE"
+	END IF
+	ELSE IF (year % 4 == 0 AND year % 100 == 0 AND year % 400 == 0)
+	BEGIN IF
+		isLeapYear = "TRUE"
+	END IF
+	ELSE
+	BEGIN IF
+		isLeapYear = "FALSE"
+	END IF
+
+	# display the result
+	IF (isLeapYear)
+	BEGIN IF
+		DISPLAY: year & " is a leap year"
+	END IF
+	ELSE
+	BEGIN IF
+		DISPLAY: year & " is not a leap year"
+	END IF
+END CODE

@@ -156,7 +156,7 @@ public class Parser
                 throw new ParseException($"Error at line: {Peek().Line}. Reserved keyword '{Peek().Value}' cannot be used as a variable name.");
             }
 
-            string name = Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Invalid variable name '{Peek().Value}'.").Value;
+            string name = Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Invalid variable name starting with '{Peek().Value}'.").Value;
             if (declaredVariables.ContainsKey(name))
             {
                 throw new ParseException($"Error at line: {Peek().Line}. Variable '{name}' already declared.");
@@ -223,9 +223,9 @@ public class Parser
             }
         }
 
-        if (IsReservedKeyword(Peek().Value))
+        if (IsReservedKeyword(Peek().Value) && Peek().Type == TokenType.IDENTIFIER)
         {
-            throw new ParseException($"Error at line: {Peek().Line}. Cannot assign reserved keyword '{Peek().Value}' to variable '{name.Value}'.");
+            throw new ParseException($"Error at line: {Peek().Line}. Cannot assign reserved keyword '{Peek().Value}' to variable '{name.Value}'. Enclose boolean literals in double quotes.");
         }
 
         //Consume(TokenType.ASSIGNMENT, $"Error at line: {Peek().Line}. Expect '=' after variable name.");
@@ -283,14 +283,14 @@ public class Parser
     {
         variableDeclarationPhase = false;
 
-        Consume(TokenType.OPENPARENTHESIS, "Expect '(' after 'WHILE'.");
+        Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after 'WHILE'.");
         Expression condition = ParseExpression();
-        Consume(TokenType.CLOSEPARENTHESIS, "Expect ')' after condition.");
+        Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after condition.");
         Advance();
 
         //Console.WriteLine($"Current: {Peek().Value}, Previous: {Previous().Value}");
 
-        Consume(TokenType.BEGINWHILE, "Expect 'BEGIN WHILE'.");
+        Consume(TokenType.BEGINWHILE, $"Error at line: {Peek().Line}. Expect 'BEGIN WHILE'.");
         insideLoop = true;
         List<Statement> body = ParseBlock(TokenType.ENDWHILE);
         insideLoop = false;

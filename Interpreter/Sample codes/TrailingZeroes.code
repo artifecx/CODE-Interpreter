@@ -1,0 +1,27 @@
+# How many zeroes are there after the last non-zero digit
+# For example, in 20400, there are 2 zeroes after the last non-zero digit of the number, 4.
+BEGIN CODE
+	INT n, count
+	INT temp
+
+	DISPLAY: "Enter a number: "
+	SCAN: n
+
+	WHILE (n <> 0)
+	BEGIN WHILE	
+		temp = n
+		temp %= 10
+		n /= 10
+
+		IF (temp == 0)
+		BEGIN IF
+			count++
+		END IF
+		ELSE
+		BEGIN IF
+			BREAK
+		END IF
+	END WHILE
+
+	DISPLAY: "Number of trailing zeros: " & count
+END CODE
