@@ -1,0 +1,19 @@
+# integer overflow test
+BEGIN CODE
+	INT a = 2147483647
+	a += 1
+END CODE
+
+# invalid data type
+BEGIN CODE
+	int a
+END CODE
+
+- check if things that arent comments are outside begin and end code DONE
+- Multiple Declarations in One Line Without Comma: INT x=5 y=6 DONE
+- Concatenation in Numeric Context INT x=5 & 6 -> 56 DONE
+- Using a Variable Before Declaration DISPLAY: x \n INT x=5 DONE
+- Invalid Characters in Identifier: INT my-var=10 DONE
+- Using a Single '=' in a Conditional, IF (x = 5) DONE
+- Colon after display and scan should not have a whitespace between NOT IMPLEMENTED
+- Multiple Commands on One Line Without Proper Separation: INT x=5 INT y=6 DONE

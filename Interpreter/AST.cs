@@ -21,6 +21,8 @@ namespace Interpreter
 
     public abstract class Statement : ASTNode { }
 
+    public class EmptyStatement : Statement { }
+
     public class DeclarationStatement : Statement
     {
         public TokenType Type { get; }

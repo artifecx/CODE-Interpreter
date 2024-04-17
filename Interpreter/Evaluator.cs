@@ -43,7 +43,7 @@ namespace Interpreter
             {
                 return variable.Value;
             }
-            throw new Exception($"Variable '{name}' is not defined.");
+            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Invalid use of reserved keyword '{name}'.") :  new Exception($"Variable '{name}' is not defined.");
         }
 
         public void SetVariable(string name, object value)
@@ -71,7 +71,7 @@ namespace Interpreter
                 return;
             }
 
-            throw new Exception($"Variable '{name}' is not defined.");
+            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Invalid use of reserved keyword '{name}'.")  : new Exception($"Variable '{name}' is not defined.");
         }
 
         private object ConvertToType(object value, TokenType type)
@@ -222,6 +222,8 @@ namespace Interpreter
                     throw new BreakException();
                 case ContinueStatement:
                     throw new ContinueException();
+                case EmptyStatement:
+                    break;
                 default:
                     throw new NotImplementedException($"Execution not implemented for statement type {statement.GetType().Name}");
             }
@@ -356,7 +358,7 @@ namespace Interpreter
                 };
             }
 
-            throw new Exception("Invalid operands for logical expression.");
+            throw new Exception($"Invalid operands for logical expression. Found: '{left}' and '{right}'");
         }
 
         private object EvaluateUnaryExpression(UnaryExpression expr)
@@ -378,7 +380,7 @@ namespace Interpreter
                     int rightInt => rightInt,
                     _ => throw new Exception("Unary '+' expects a numeric operand.")
                 },
-                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"{right} Unary 'NOT' expects a boolean operand."),
+                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"Unary 'NOT' expects a boolean operand. Found: '{right}'"),
                 TokenType.INCREMENT => right switch
                 {
                     int rightInt => HandleIntegerOverflow(rightInt, 1, "+"),
@@ -476,7 +478,7 @@ namespace Interpreter
                 return operation == "==" ? leftBool == rightBool : leftBool != rightBool;
             }
 
-            throw new Exception($"Invalid operands for operation '{operation}'.");
+            throw new Exception($"Invalid operands for operation '{operation}'. Found: '{left}' and '{right}'.");
         }
 
         private void IncrementVariable(Variable variable)

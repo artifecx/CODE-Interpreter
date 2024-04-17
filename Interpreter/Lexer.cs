@@ -465,7 +465,7 @@ public class Lexer
         }
         if (_index == _code.Length)
         {
-            throw new ArgumentException("Unterminated string literal");
+            throw new ArgumentException($"Error at line: {_line}. Unterminated string literal");
         }
         _index++;
         string str = _code[(start + 1)..(_index - 1)].ToString();

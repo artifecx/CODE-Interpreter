@@ -12,6 +12,9 @@ public class Parser
     private int current = 0;
     private bool variableDeclarationPhase = true;
     private bool insideLoop = false;
+    private bool inDisplayContext = false;
+    private bool inConditionalContext = false;
+    private bool inIfBlock = false;
 
     private Dictionary<TokenType, Func<Expression, FunctionCallExpression>> functionMap =
         new Dictionary<TokenType, Func<Expression, FunctionCallExpression>>
@@ -64,6 +67,26 @@ public class Parser
             int errorLine = duplicateBeginCodeIndex > -1 ? tokens[duplicateBeginCodeIndex].Line : tokens[duplicateEndCodeIndex].Line;
             string duplicateToken = duplicateBeginCodeIndex > -1 ? "BEGIN CODE" : "END CODE";
             throw new ParseException($"Error at line: {errorLine}. Only one {duplicateToken} should exist. ");
+        }
+
+        if (beginCodeIndex > 0 || endCodeIndex < tokens.Count - 1)
+        {
+            if (beginCodeIndex > 0)
+            {
+                var outOfBoundsToken = tokens.Take(beginCodeIndex).FirstOrDefault(token => token.Type != TokenType.COMMENT && token.Type != TokenType.NEXTLINE);
+                if (outOfBoundsToken != null)
+                {
+                    throw new ParseException($"Error at line: {outOfBoundsToken.Line}. Invalid code or tokens outside BEGIN CODE.");
+                }
+            }
+            if (endCodeIndex < tokens.Count - 1)
+            {
+                var outOfBoundsToken = tokens.Skip(endCodeIndex + 1).FirstOrDefault(token => token.Type != TokenType.COMMENT && token.Type != TokenType.NEXTLINE && token.Type != TokenType.EOF);
+                if (outOfBoundsToken != null)
+                {
+                    throw new ParseException($"Error at line: {outOfBoundsToken.Line}. Invalid code or tokens after END CODE.");
+                }
+            }
         }
     }
 
@@ -141,7 +164,10 @@ public class Parser
             throw new ParseException($"Error at line: {Peek().Line}. Unknown character '{Peek().Value}'");
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. {Peek().Value} Expect statement.");
+        // allow empty statements in if-else blocks
+        if (inIfBlock) return new EmptyStatement();
+
+        throw new ParseException($"Error at line: {Peek().Line}. Invalid statement. Cause: '{Peek().Value}'");
     }
 
     private DeclarationStatement ParseDeclarationStatement()
@@ -173,7 +199,7 @@ public class Parser
                 case TokenType.CHAR:
                     if (!(initializer is LiteralExpression literal && literal.Value is char))
                     {
-                        throw new ParseException($"Error at line: {Peek().Line}. Character variable '{name}' must be assigned a character literal using single quotes.");
+                        throw new ParseException($"Error at line: {Peek().Line}. CHAR variable '{name}' must be assigned a character enclosed in single quotes. Found: {Previous().Type} {Previous().Value}");
                     }
                     break;
                 case TokenType.BOOL:
@@ -182,7 +208,7 @@ public class Parser
                         string boolValue = lit.Value.ToString();
                         if (boolValue != "TRUE" && boolValue != "FALSE")
                         {
-                            throw new ParseException($"Error at line: {Peek().Line}. Boolean values must be either 'TRUE' or 'FALSE' in all caps. Found: {boolValue}");
+                            throw new ParseException($"Error at line: {Peek().Line}. Boolean values must be either 'TRUE' or 'FALSE' in all caps and enclosed in double quotes. Found: {boolValue}");
                         }
                     }
                     break;
@@ -191,6 +217,16 @@ public class Parser
             variables.Add(new Variable(name, initializer));
             declaredVariables.Add(name, type);
         } while (Match(TokenType.COMMA));
+
+        if(Peek().Type == TokenType.IDENTIFIER)
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. Expected comma for multiple declarations on one line.");
+        }
+
+        if(Match(TokenType.INT, TokenType.CHAR, TokenType.BOOL, TokenType.FLOAT, TokenType.STRING))
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. Improper declaration. Move '{Previous().Value} {Peek().Value}' to a new line or replace '{Previous().Value}' with a comma.");
+        }
 
         return new DeclarationStatement(type, variables);
     }
@@ -254,11 +290,14 @@ public class Parser
         variableDeclarationPhase = false;
 
         Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after 'IF'.");
+        inConditionalContext = true;
         Expression condition = ParseExpression();
+        inConditionalContext = false;
         Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after if condition.");
         Advance();
 
         Consume(TokenType.BEGINIF, $"Error at line: {Peek().Line}. Expect 'BEGIN IF'.");
+        inIfBlock = true;
         List<Statement> thenBranch = ParseBlock(TokenType.ENDIF);
         List<Statement> elseBranch = null;
 
@@ -275,7 +314,7 @@ public class Parser
                 elseBranch = ParseBlock(TokenType.ENDIF);
             }
         }
-
+        inIfBlock = false;
         return new IfStatement(condition, thenBranch, elseBranch);
     }
 
@@ -284,7 +323,9 @@ public class Parser
         variableDeclarationPhase = false;
 
         Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after 'WHILE'.");
+        inConditionalContext = true;
         Expression condition = ParseExpression();
+        inConditionalContext = false;
         Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after condition.");
         Advance();
 
@@ -322,6 +363,7 @@ public class Parser
     private OutputStatement ParseOutputStatement()
     {
         variableDeclarationPhase = false;
+        inDisplayContext = true;
 
         Consume(TokenType.COLON, $"Error at line: {Peek().Line}. Expected ':' after DISPLAY statement.");
 
@@ -356,6 +398,12 @@ public class Parser
             expectConcatOperator = true;
         } while (!Check(TokenType.ENDCODE) && !IsAtEnd() && !Peek().Value.Contains("\\n"));
 
+        if (!declaredVariables.ContainsKey(Previous().Value) && Previous().Type == TokenType.IDENTIFIER)
+        {
+            throw new ParseException($"Error at line: {Peek().Line}. Variable '{Previous().Value}' is not declared.");
+        }
+
+        inDisplayContext = false;
         return new OutputStatement(expressions);
     }
 
@@ -374,8 +422,9 @@ public class Parser
                 {
                     throw new ParseException($"Error at line: {Peek().Line}. '{Peek().Value}' is a reserved keyword and cannot be used as a variable name.");
                 }
-                throw new ParseException($"Error at line: {Peek().Line}. Variable '{Peek().Value}' is not declared.");
+                throw Peek().Type == TokenType.IDENTIFIER ? new ParseException($"Error at line: {Peek().Line}. Variable '{Peek().Value}' is not declared.") : new ParseException($"Error at line: {Peek().Line}. Invalid variable '{Peek().Value}'");
             }
+
             variables.Add(new Variable(Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Variable name for input expected.").Value));
         } while (Match(TokenType.COMMA));
 
@@ -410,6 +459,11 @@ public class Parser
         if (Match(TokenType.ASSIGNMENT, TokenType.ADDASSIGNMENT, TokenType.SUBASSIGNMENT,
             TokenType.MULASSIGNMENT, TokenType.DIVASSIGNMENT, TokenType.MODASSIGNMENT))
         {
+            if (inConditionalContext && Previous().Type == TokenType.ASSIGNMENT)
+            {
+                throw new ParseException($"Error at line: {Peek().Line}. Cannot use assignment operator '=' within conditional statements.");
+            }
+
             Token equals = Previous();
             Expression value = ParseAssignment();
 
@@ -489,6 +543,10 @@ public class Parser
 
         while (Match(TokenType.ADD, TokenType.SUB, TokenType.CONCATENATE))
         {
+            if(Previous().Type == TokenType.CONCATENATE && !inDisplayContext)
+            {
+                throw new ParseException($"Error at line: {Peek().Line}. Cannot perform concatenation '&' outside DISPLAY statement.");
+            }
             Token operatorToken = Previous();
             Expression right = ParseMultiplication();
             expr = new BinaryExpression(expr, operatorToken, right);
@@ -569,13 +627,13 @@ public class Parser
             return new GroupingExpression(expr);
         }
 
-        throw new ParseException($"Error at line: {Peek().Line}. {Peek().Value} Expect expression.");
+        throw Match(TokenType.UNKNOWN) ? new ParseException($"Error at line: {Peek().Line}. Unknown character '{Previous().Value}'") : new ParseException($"Error at line: {Peek().Line}. Invalid/empty expression.");
     }
 
     private Expression ParseFunctionCall()
     {
         Token functionName = Previous();
-        Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after function name.");
+        Consume(TokenType.OPENPARENTHESIS, $"Error at line: {Peek().Line}. Expect '(' after function name. Found: '{Peek().Value}'.");
 
         if (Check(TokenType.CLOSEPARENTHESIS))
         {
@@ -583,7 +641,7 @@ public class Parser
         }
 
         Expression argument = ParseExpression();
-        Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after argument.");
+        Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after argument. Found: '{Peek().Value}'.");
 
         if (functionMap.TryGetValue(functionName.Type, out var constructor))
         {
