@@ -17,24 +17,26 @@ namespace Interpreter
             {
                 typedValue = type switch
                 {
-                    TokenType.INT => Convert.ToInt32(value),
+                    TokenType.INT => InterpreterClass.ConvertToInt(value),
                     TokenType.FLOAT => Convert.ToSingle(value),
                     TokenType.CHAR => Convert.ToChar(value),
                     TokenType.BOOL => Convert.ToBoolean(value),
                     _ => value
                 };
+
+                if (!IsTypeCompatible(typedValue, type))
+                {
+                    throw new InvalidOperationException("Incompatible type after conversion.");
+                }
+
+                variables[name] = (typedValue, type);
             }
             catch
             {
-                throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type '{RetrieveType(value)}'.");
+                string valueString = InterpreterClass.ConvertToString(value);
+                string actualType = RetrieveType(value).ToString();
+                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{valueString}' type '{actualType}'.");
             }
-
-            if (!IsTypeCompatible(value, type))
-            {
-                throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type {RetrieveType(value)}.");
-            }
-
-            variables[name] = (typedValue, type);
         }
 
         public object GetVariable(string name, int lineNumber)
@@ -51,34 +53,37 @@ namespace Interpreter
             if (variables.ContainsKey(name))
             {
                 var (existingValue, type) = variables[name];
-
                 object typedValue;
+
                 try
                 {
                     typedValue = ConvertToType(value, type);
+
+                    if (!IsTypeCompatible(typedValue, type))
+                    {
+                        throw new InvalidOperationException("Incompatible type after conversion.");
+                    }
+
+                    variables[name] = (typedValue, type);
                 }
                 catch
                 {
-                    throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
+                    string valueString = InterpreterClass.ConvertToString(value);
+                    string actualType = RetrieveType(value).ToString();
+                    throw new Exception($"Type mismatch: Cannot assign value '{valueString}' type '{actualType}' to '{name}' type {type}.");
                 }
 
-                if (!IsTypeCompatible(value, type))
-                {
-                    throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
-                }
-
-                variables[name] = (typedValue, type);
                 return;
             }
 
-            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Error at line: {lineNumber}. Invalid use of reserved keyword '{name}'.")  : new Exception($"Variable '{name}' is not defined.");
+            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Invalid use of reserved keyword '{name}'.") : new Exception($"Variable '{name}' is not defined.");
         }
 
         private object ConvertToType(object value, TokenType type)
         {
             switch (type)
             {
-                case TokenType.INT: return Convert.ToInt32(value);
+                case TokenType.INT: return InterpreterClass.ConvertToInt(value);
                 case TokenType.FLOAT: return Convert.ToSingle(value);
                 case TokenType.CHAR: return Convert.ToChar(value);
                 case TokenType.BOOL: return Convert.ToBoolean(value);
