@@ -17,7 +17,7 @@ namespace Interpreter
             {
                 typedValue = type switch
                 {
-                    TokenType.INT => InterpreterClass.ConvertToInt(value),
+                    TokenType.INT => InterpreterClass.ConvertToInt(value, lineNumber),
                     TokenType.FLOAT => Convert.ToSingle(value),
                     TokenType.CHAR => Convert.ToChar(value),
                     TokenType.BOOL => Convert.ToBoolean(value),
@@ -26,7 +26,7 @@ namespace Interpreter
 
                 if (!IsTypeCompatible(typedValue, type))
                 {
-                    throw new InvalidOperationException("Incompatible type after conversion.");
+                    throw new InvalidOperationException($"Error at line: {lineNumber}. Incompatible type after conversion.");
                 }
 
                 variables[name] = (typedValue, type);
@@ -35,7 +35,7 @@ namespace Interpreter
             {
                 string valueString = InterpreterClass.ConvertToString(value);
                 string actualType = RetrieveType(value).ToString();
-                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{valueString}' type '{actualType}'.");
+                throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot declare '{name}' as {type} with value '{valueString}' type '{actualType}'.");
             }
         }
 
@@ -57,11 +57,11 @@ namespace Interpreter
 
                 try
                 {
-                    typedValue = ConvertToType(value, type);
+                    typedValue = ConvertToType(value, type, lineNumber);
 
                     if (!IsTypeCompatible(typedValue, type))
                     {
-                        throw new InvalidOperationException("Incompatible type after conversion.");
+                        throw new InvalidOperationException($"Error at line: {lineNumber}. Incompatible type after conversion.");
                     }
 
                     variables[name] = (typedValue, type);
@@ -70,20 +70,20 @@ namespace Interpreter
                 {
                     string valueString = InterpreterClass.ConvertToString(value);
                     string actualType = RetrieveType(value).ToString();
-                    throw new Exception($"Type mismatch: Cannot assign value '{valueString}' type '{actualType}' to '{name}' type {type}.");
+                    throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot assign value '{valueString}' type '{actualType}' to '{name}' type {type}.");
                 }
 
                 return;
             }
 
-            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Invalid use of reserved keyword '{name}'.") : new Exception($"Variable '{name}' is not defined.");
+            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Error at line: {lineNumber}. Invalid use of reserved keyword '{name}'.") : new Exception($"Variable '{name}' is not defined.");
         }
 
-        private object ConvertToType(object value, TokenType type)
+        private object ConvertToType(object value, TokenType type, int lineNumber)
         {
             switch (type)
             {
-                case TokenType.INT: return InterpreterClass.ConvertToInt(value);
+                case TokenType.INT: return InterpreterClass.ConvertToInt(value, lineNumber);
                 case TokenType.FLOAT: return Convert.ToSingle(value);
                 case TokenType.CHAR: return Convert.ToChar(value);
                 case TokenType.BOOL: return Convert.ToBoolean(value);
@@ -518,7 +518,7 @@ namespace Interpreter
             }
         }
 
-        private int ConvertToInt(object value, int lineNumber)
+        public static int ConvertToInt(object value, int lineNumber)
         {
             if (value is float floatValue)
             {
