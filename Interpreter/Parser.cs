@@ -19,12 +19,12 @@ public class Parser
     private Dictionary<TokenType, Func<Expression, FunctionCallExpression>> functionMap =
         new Dictionary<TokenType, Func<Expression, FunctionCallExpression>>
         {
-            { TokenType.CEIL, arg => new CeilExpression(arg) },
-            { TokenType.FLOOR, arg => new FloorExpression(arg) },
-            { TokenType.TOSTRING, arg => new ToStringExpression(arg) },
-            { TokenType.TOFLOAT, arg => new ToFloatExpression(arg) },
-            { TokenType.TOINT, arg => new ToIntExpression(arg) },
-            { TokenType.TYPE, arg => new TypeExpression(arg) }
+            { TokenType.CEIL, arg => new CeilExpression(arg, arg.lineNumber) },
+            { TokenType.FLOOR, arg => new FloorExpression(arg, arg.lineNumber) },
+            { TokenType.TOSTRING, arg => new ToStringExpression(arg, arg.lineNumber) },
+            { TokenType.TOFLOAT, arg => new ToFloatExpression(arg, arg.lineNumber) },
+            { TokenType.TOINT, arg => new ToIntExpression(arg, arg.lineNumber) },
+            { TokenType.TYPE, arg => new TypeExpression(arg, arg.lineNumber) }
         };
 
     public Parser(List<Token> tokens)
@@ -151,8 +151,8 @@ public class Parser
                 {
                     TokenType operationType = Previous().Type;
                     return operationType == TokenType.INCREMENT
-                           ? new PostIncrementStatement(new Variable(identifierToken.Value))
-                           : new PostDecrementStatement(new Variable(identifierToken.Value));
+                           ? new PostIncrementStatement(new Variable(identifierToken.Value, Previous().Line), Previous().Line)
+                           : new PostDecrementStatement(new Variable(identifierToken.Value, Previous().Line), Previous().Line);
                 }
                 current--;
             }
@@ -165,7 +165,7 @@ public class Parser
         }
 
         // allow empty statements in if-else blocks
-        if (inIfBlock) return new EmptyStatement();
+        if (inIfBlock) return new EmptyStatement(Peek().Line);
 
         throw new ParseException($"Error at line: {Peek().Line}. Invalid statement. Cause: '{Peek().Value}'");
     }
@@ -196,12 +196,12 @@ public class Parser
 
             switch (type)
             {
-                case TokenType.CHAR:
+                /*case TokenType.CHAR:
                     if (!(initializer is LiteralExpression literal && literal.Value is char))
                     {
                         throw new ParseException($"Error at line: {Peek().Line}. CHAR variable '{name}' must be assigned a character enclosed in single quotes. Found: {Previous().Type} {Previous().Value}");
                     }
-                    break;
+                    break;*/
                 case TokenType.BOOL:
                     if (initializer is LiteralExpression lit && lit.Value is string)
                     {
@@ -214,7 +214,7 @@ public class Parser
                     break;
             }
 
-            variables.Add(new Variable(name, initializer));
+            variables.Add(new Variable(name, Previous().Line, initializer));
             declaredVariables.Add(name, type);
         } while (Match(TokenType.COMMA));
 
@@ -228,7 +228,7 @@ public class Parser
             throw new ParseException($"Error at line: {Peek().Line}. Improper declaration. Move '{Previous().Value} {Peek().Value}' to a new line or replace '{Previous().Value}' with a comma.");
         }
 
-        return new DeclarationStatement(type, variables);
+        return new DeclarationStatement(type, variables, Peek().Line);
     }
 
     private AssignmentStatement ParseAssignmentStatement()
@@ -282,7 +282,7 @@ public class Parser
             }
         }
 
-        return new AssignmentStatement(new Variable(name.Value), operatorToken, value);
+        return new AssignmentStatement(new Variable(name.Value, value.lineNumber), operatorToken, value, value.lineNumber);
     }
 
     private IfStatement ParseIfStatement()
@@ -315,7 +315,7 @@ public class Parser
             }
         }
         inIfBlock = false;
-        return new IfStatement(condition, thenBranch, elseBranch);
+        return new IfStatement(condition, thenBranch, elseBranch, condition.lineNumber);
     }
 
     private WhileStatement ParseWhileStatement()
@@ -336,7 +336,7 @@ public class Parser
         List<Statement> body = ParseBlock(TokenType.ENDWHILE);
         insideLoop = false;
 
-        return new WhileStatement(condition, body);
+        return new WhileStatement(condition, body, condition.lineNumber);
     }
 
     private List<Statement> ParseBlock(TokenType endToken)
@@ -380,7 +380,7 @@ public class Parser
             if (Check(TokenType.NEXTLINE))
             {
                 Advance();
-                expressions.Add(new LiteralExpression("\n"));
+                expressions.Add(new LiteralExpression("\n", Previous().Line));
                 expectConcatOperator = false;
                 continue;
             }
@@ -404,7 +404,7 @@ public class Parser
         }
 
         inDisplayContext = false;
-        return new OutputStatement(expressions);
+        return new OutputStatement(expressions, Peek().Line);
     }
 
     private InputStatement ParseInputStatement()
@@ -425,26 +425,26 @@ public class Parser
                 throw Peek().Type == TokenType.IDENTIFIER ? new ParseException($"Error at line: {Peek().Line}. Variable '{Peek().Value}' is not declared.") : new ParseException($"Error at line: {Peek().Line}. Invalid variable '{Peek().Value}'");
             }
 
-            variables.Add(new Variable(Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Variable name for input expected.").Value));
+            variables.Add(new Variable(Consume(TokenType.IDENTIFIER, $"Error at line: {Peek().Line}. Variable name for input expected.").Value, Previous().Line));
         } while (Match(TokenType.COMMA));
 
         if (Check(TokenType.IDENTIFIER)) throw new ParseException($"Error at line: {Peek().Line}. Expect comma between variables, received '{Peek().Value}'.");
 
-        return new InputStatement(variables);
+        return new InputStatement(variables, Peek().Line);
     }
 
     private Statement ParseBreakStatement()
     {
         if (!insideLoop)
             throw new ParseException($"Error at line: {Peek().Line}. BREAK not inside a loop.");
-        return new BreakStatement();
+        return new BreakStatement(Peek().Line);
     }
 
     private Statement ParseContinueStatement()
     {
         if (!insideLoop)
             throw new ParseException($"Error at line: {Peek().Line}. CONTINUE not inside a loop.");
-        return new ContinueStatement();
+        return new ContinueStatement(Peek().Line);
     }
 
     private Expression ParseExpression()
@@ -470,7 +470,7 @@ public class Parser
             if (expr is VariableExpression)
             {
                 String name = ((VariableExpression)expr).Name;
-                return new AssignmentExpression(new Variable(name, null), equals, value);
+                return new AssignmentExpression(new Variable(name, value.lineNumber, null), equals, value, equals.Line);
             }
             else
             {
@@ -489,7 +489,7 @@ public class Parser
         {
             Token operatorToken = Previous();
             Expression right = ParseAnd();
-            expr = new LogicalExpression(expr, operatorToken, right);
+            expr = new LogicalExpression(expr, operatorToken, right, operatorToken.Line);
         }
 
         return expr;
@@ -503,7 +503,7 @@ public class Parser
         {
             Token operatorToken = Previous();
             Expression right = ParseEquality();
-            expr = new LogicalExpression(expr, operatorToken, right);
+            expr = new LogicalExpression(expr, operatorToken, right, operatorToken.Line);
         }
 
         return expr;
@@ -517,7 +517,7 @@ public class Parser
         {
             Token operatorToken = Previous();
             Expression right = ParseComparison();
-            expr = new BinaryExpression(expr, operatorToken, right);
+            expr = new BinaryExpression(expr, operatorToken, right, operatorToken.Line);
         }
 
         return expr;
@@ -531,7 +531,7 @@ public class Parser
         {
             Token operatorToken = Previous();
             Expression right = ParseAddition();
-            expr = new BinaryExpression(expr, operatorToken, right);
+            expr = new BinaryExpression(expr, operatorToken, right, operatorToken.Line);
         }
 
         return expr;
@@ -549,7 +549,7 @@ public class Parser
             }
             Token operatorToken = Previous();
             Expression right = ParseMultiplication();
-            expr = new BinaryExpression(expr, operatorToken, right);
+            expr = new BinaryExpression(expr, operatorToken, right, operatorToken.Line);
         }
 
         return expr;
@@ -563,7 +563,7 @@ public class Parser
         {
             Token operatorToken = Previous();
             Expression right = ParseUnary();
-            expr = new BinaryExpression(expr, operatorToken, right);
+            expr = new BinaryExpression(expr, operatorToken, right, operatorToken.Line);
         }
 
         return expr;
@@ -575,13 +575,13 @@ public class Parser
         {
             Token operatorToken = Previous();
             Expression right = ParseUnary();
-            return new UnaryExpression(operatorToken, right);
+            return new UnaryExpression(operatorToken, right, operatorToken.Line);
         }
         if (Match(TokenType.NOT))
         {
             Token operatorToken = Previous();
             Expression right = ParseUnary();
-            return new UnaryExpression(operatorToken, right);
+            return new UnaryExpression(operatorToken, right, operatorToken.Line);
         }
 
         return ParsePrimary();
@@ -589,14 +589,14 @@ public class Parser
 
     private Expression ParsePrimary()
     {
-        if (Match(TokenType.FALSE)) return new LiteralExpression(false);
-        if (Match(TokenType.TRUE)) return new LiteralExpression(true);
-        if (Match(TokenType.INTEGERLITERAL)) return new LiteralExpression(int.Parse(Previous().Value));
-        if (Match(TokenType.FLOATLITERAL)) return new LiteralExpression(float.Parse(Previous().Value));
-        if (Match(TokenType.CHARACTERLITERAL)) return new LiteralExpression(Convert.ToChar(Previous().Value));
-        if (Match(TokenType.STRINGLITERAL)) return new LiteralExpression(Previous().Value);
+        if (Match(TokenType.FALSE)) return new LiteralExpression(false, Previous().Line);
+        if (Match(TokenType.TRUE)) return new LiteralExpression(true, Previous().Line);
+        if (Match(TokenType.INTEGERLITERAL)) return new LiteralExpression(int.Parse(Previous().Value), Previous().Line);
+        if (Match(TokenType.FLOATLITERAL)) return new LiteralExpression(float.Parse(Previous().Value), Previous().Line);
+        if (Match(TokenType.CHARACTERLITERAL)) return new LiteralExpression(Convert.ToChar(Previous().Value), Previous().Line);
+        if (Match(TokenType.STRINGLITERAL)) return new LiteralExpression(Previous().Value, Previous().Line);
         
-        if (Match(TokenType.PI)) return new LiteralExpression(Math.PI);
+        if (Match(TokenType.PI)) return new LiteralExpression(Math.PI, Previous().Line);
 
         if (functionMap.ContainsKey(Peek().Type) && Match(Peek().Type))
         {
@@ -610,21 +610,21 @@ public class Parser
                 return ParseFunctionCall();
             }
 
-            VariableExpression varExpr = new VariableExpression(Previous().Value);
+            VariableExpression varExpr = new VariableExpression(Previous().Value, Previous().Line);
             if (Match(TokenType.INCREMENT) || Match(TokenType.DECREMENT))
             {
                 Token operatorToken = Previous();
-                return new UnaryExpression(operatorToken, varExpr);
+                return new UnaryExpression(operatorToken, varExpr, Previous().Line);
             }
 
-            return new VariableExpression(Previous().Value);
+            return new VariableExpression(Previous().Value, Previous().Line);
         }
 
         if (Match(TokenType.OPENPARENTHESIS))
         {
             Expression expr = ParseExpression();
             Consume(TokenType.CLOSEPARENTHESIS, $"Error at line: {Peek().Line}. Expect ')' after expression.");
-            return new GroupingExpression(expr);
+            return new GroupingExpression(expr, Peek().Line);
         }
 
         throw Match(TokenType.UNKNOWN) ? new ParseException($"Error at line: {Peek().Line}. Unknown character '{Previous().Value}'") : new ParseException($"Error at line: {Peek().Line}. Invalid/empty expression.");

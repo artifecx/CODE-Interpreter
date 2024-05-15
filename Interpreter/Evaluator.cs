@@ -10,7 +10,7 @@ namespace Interpreter
     {
         private readonly Dictionary<string, (object Value, TokenType Type)> variables = new();
 
-        public void DeclareVariable(string name, object value, TokenType type)
+        public void DeclareVariable(string name, object value, TokenType type, int lineNumber)
         {
             object typedValue;
             try
@@ -26,27 +26,27 @@ namespace Interpreter
             }
             catch
             {
-                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type '{RetrieveType(value)}'.");
+                throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type '{RetrieveType(value)}'.");
             }
 
             if (!IsTypeCompatible(value, type))
             {
-                throw new Exception($"Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type {RetrieveType(value)}.");
+                throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot declare '{name}' as {type} with value '{InterpreterClass.ConvertToString(value)}' type {RetrieveType(value)}.");
             }
 
             variables[name] = (typedValue, type);
         }
 
-        public object GetVariable(string name)
+        public object GetVariable(string name, int lineNumber)
         {
             if (variables.TryGetValue(name, out var variable))
             {
                 return variable.Value;
             }
-            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Invalid use of reserved keyword '{name}'.") :  new Exception($"Variable '{name}' is not defined.");
+            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Error at line: {lineNumber}. Invalid use of reserved keyword '{name}'.") :  new Exception($"Variable '{name}' is not defined.");
         }
 
-        public void SetVariable(string name, object value)
+        public void SetVariable(string name, object value, int lineNumber)
         {
             if (variables.ContainsKey(name))
             {
@@ -59,19 +59,19 @@ namespace Interpreter
                 }
                 catch
                 {
-                    throw new Exception($"Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
+                    throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
                 }
 
                 if (!IsTypeCompatible(value, type))
                 {
-                    throw new Exception($"Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
+                    throw new Exception($"Error at line: {lineNumber}. Type mismatch: Cannot assign value '{InterpreterClass.ConvertToString(value)}' to '{name}' of type {type}.");
                 }
 
                 variables[name] = (typedValue, type);
                 return;
             }
 
-            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Invalid use of reserved keyword '{name}'.")  : new Exception($"Variable '{name}' is not defined.");
+            throw Lexer.keywords.TryGetValue(name, out var _type) ? throw new Exception($"Error at line: {lineNumber}. Invalid use of reserved keyword '{name}'.")  : new Exception($"Variable '{name}' is not defined.");
         }
 
         private object ConvertToType(object value, TokenType type)
@@ -155,14 +155,14 @@ namespace Interpreter
                     foreach (var variable in decl.Variables)
                     {
                         var value = variable.Initializer != null ? EvaluateExpression(variable.Initializer) : GetDefaultValue(decl.Type);
-                        context.DeclareVariable(variable.Name, value, decl.Type);
+                        context.DeclareVariable(variable.Name, value, decl.Type, variable.lineNumber);
                     }
                     break;
                 case AssignmentStatement assign:
                     var assignValue = EvaluateExpression(assign.Value);
-                    var variableValue = context.GetVariable(assign.Variable.Name);
+                    var variableValue = context.GetVariable(assign.Variable.Name, assign.lineNumber);
                     if (assign.Operator.Type != TokenType.ASSIGNMENT) assignValue = EvaluateBinaryExpression(variableValue, assign.Operator, assignValue);
-                    context.SetVariable(assign.Variable.Name, assignValue);
+                    context.SetVariable(assign.Variable.Name, assignValue, assign.lineNumber);
                     break;
                 case PostIncrementStatement postIncrement:
                     IncrementVariable(postIncrement.Variable);
@@ -175,8 +175,8 @@ namespace Interpreter
                     {
                         //Console.WriteLine($"Enter value for {variable.Name}: ");
                         var input = Console.ReadLine();
-                        if (input == null || input == "") throw new Exception($"Input is invalid, try again.");
-                        context.SetVariable(variable.Name, input);
+                        if (input == null || input == "") throw new Exception($"Error at line: {inputStmt.lineNumber}. Input is invalid, try again.");
+                        context.SetVariable(variable.Name, input, variable.lineNumber);
                     }
                     break;
                 case OutputStatement output:
@@ -225,7 +225,7 @@ namespace Interpreter
                 case EmptyStatement:
                     break;
                 default:
-                    throw new NotImplementedException($"Execution not implemented for statement type {statement.GetType().Name}");
+                    throw new NotImplementedException($"Error at line: {statement.lineNumber}. Execution not implemented for statement type {statement.GetType().Name}");
             }
         }
 
@@ -236,7 +236,7 @@ namespace Interpreter
                 case LiteralExpression lit:
                     return lit.Value;
                 case VariableExpression varExpr:
-                    return context.GetVariable(varExpr.Name);
+                    return context.GetVariable(varExpr.Name, varExpr.lineNumber);
                 case BinaryExpression binExpr:
                     var left = EvaluateExpression(binExpr.Left);
                     var right = EvaluateExpression(binExpr.Right);
@@ -249,14 +249,14 @@ namespace Interpreter
                     return EvaluateLogicalExpression(leftLogic, logExpr.Operator, rightLogic);
                 case AssignmentExpression assignExpr:
                     var value = EvaluateExpression(assignExpr.Value);
-                    context.SetVariable(assignExpr.Variable.Name, value);
+                    context.SetVariable(assignExpr.Variable.Name, value, assignExpr.lineNumber);
                     return value;
                 case GroupingExpression groupExpr:
                     return EvaluateExpression(groupExpr.Expression);
                 case FunctionCallExpression func:
                     return EvaluateFunctionCall(func);
                 default:
-                    throw new NotImplementedException($"Evaluation not implemented for expression type {expression.GetType().Name}");
+                    throw new NotImplementedException($"Error at line: {expression.lineNumber}. Evaluation not implemented for expression type {expression.GetType().Name}");
             }
         }
 
@@ -269,9 +269,9 @@ namespace Interpreter
                 FloorExpression _ => Math.Floor(Convert.ToDouble(argumentValue)),
                 ToStringExpression _ => ConvertToString(argumentValue),
                 ToFloatExpression _ => Convert.ToSingle(argumentValue),
-                ToIntExpression _ => ConvertToInt(argumentValue),
+                ToIntExpression _ => ConvertToInt(argumentValue, func.lineNumber),
                 TypeExpression _ => EvaluateTypeExpression(argumentValue),
-                _ => throw new NotImplementedException($"Function {func.FunctionName} is not implemented.")
+                _ => throw new NotImplementedException($"Error at line: {func.lineNumber}. Function {func.FunctionName} is not implemented.")
             };
         }
 
@@ -302,8 +302,8 @@ namespace Interpreter
             left = ConvertIfString(left);
             right = ConvertIfString(right);
 
-            left = left is VariableExpression leftVar ? context.GetVariable(leftVar.Name) : left;
-            right = right is VariableExpression rightVar ? context.GetVariable(rightVar.Name) : right;
+            left = left is VariableExpression leftVar ? context.GetVariable(leftVar.Name, leftVar.lineNumber) : left;
+            right = right is VariableExpression rightVar ? context.GetVariable(rightVar.Name, rightVar.lineNumber) : right;
 
             bool isLeftFloat = left is float;
             bool isRightFloat = right is float;
@@ -326,23 +326,23 @@ namespace Interpreter
 
             return operatorToken.Type switch
             {
-                TokenType.ADD => PerformOperation(left, right, operatorToken.Value),
-                TokenType.SUB => PerformOperation(left, right, operatorToken.Value),
-                TokenType.MUL => PerformOperation(left, right, operatorToken.Value),
-                TokenType.DIV => PerformOperation(left, right, operatorToken.Value),
-                TokenType.MOD => PerformOperation(left, right, operatorToken.Value),
-                TokenType.GREATERTHAN => PerformOperation(left, right, operatorToken.Value),
-                TokenType.LESSERTHAN => PerformOperation(left, right, operatorToken.Value),
-                TokenType.GTEQ => PerformOperation(left, right, operatorToken.Value),
-                TokenType.LTEQ => PerformOperation(left, right, operatorToken.Value),
-                TokenType.EQUAL => PerformOperation(left, right, operatorToken.Value),
-                TokenType.NOTEQUAL => PerformOperation(left, right, operatorToken.Value),
-                TokenType.ADDASSIGNMENT => PerformOperation(left, right, "+"),
-                TokenType.SUBASSIGNMENT => PerformOperation(left, right, "-"),
-                TokenType.MULASSIGNMENT => PerformOperation(left, right, "*"),
-                TokenType.DIVASSIGNMENT => PerformOperation(left, right, "/"),
-                TokenType.MODASSIGNMENT => PerformOperation(left, right, "%"),
-                _ => throw new NotImplementedException($"Operator {operatorToken.Type} is not implemented."),
+                TokenType.ADD => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.SUB => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.MUL => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.DIV => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.MOD => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.GREATERTHAN => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.LESSERTHAN => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.GTEQ => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.LTEQ => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.EQUAL => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.NOTEQUAL => PerformOperation(left, right, operatorToken.Value, operatorToken.Line),
+                TokenType.ADDASSIGNMENT => PerformOperation(left, right, "+", operatorToken.Line),
+                TokenType.SUBASSIGNMENT => PerformOperation(left, right, "-", operatorToken.Line),
+                TokenType.MULASSIGNMENT => PerformOperation(left, right, "*", operatorToken.Line),
+                TokenType.DIVASSIGNMENT => PerformOperation(left, right, "/", operatorToken.Line),
+                TokenType.MODASSIGNMENT => PerformOperation(left, right, "%", operatorToken.Line),
+                _ => throw new NotImplementedException($"Error at line: {operatorToken.Line}. Operator {operatorToken.Type} is not implemented."),
             };
         }
 
@@ -354,11 +354,11 @@ namespace Interpreter
                 {
                     TokenType.AND => leftBool && rightBool,
                     TokenType.OR => leftBool || rightBool,
-                    _ => throw new NotImplementedException($"Logical operator {operatorToken.Type} is not implemented."),
+                    _ => throw new NotImplementedException($"Error at line: {operatorToken.Line}. Logical operator {operatorToken.Type} is not implemented."),
                 };
             }
 
-            throw new Exception($"Invalid operands for logical expression. Found: '{left}' and '{right}'");
+            throw new Exception($"Error at line: {operatorToken.Line}. Invalid operands for logical expression. Found: '{left}' and '{right}'");
         }
 
         private object EvaluateUnaryExpression(UnaryExpression expr)
@@ -372,26 +372,26 @@ namespace Interpreter
                 {
                     float rightFloat => -rightFloat,
                     int rightInt => -rightInt,
-                    _ => throw new Exception("Unary '-' expects a numeric operand.")
+                    _ => throw new Exception($"Error at line: {expr.lineNumber}. Unary '-' expects a numeric operand.")
                 },
                 TokenType.ADD => right switch
                 {
                     float rightFloat => rightFloat,
                     int rightInt => rightInt,
-                    _ => throw new Exception("Unary '+' expects a numeric operand.")
+                    _ => throw new Exception($"Error at line: {expr.lineNumber}. Unary '+' expects a numeric operand.")
                 },
-                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"Unary 'NOT' expects a boolean operand. Found: '{right}'"),
+                TokenType.NOT => right is bool rightBool ? !rightBool : throw new Exception($"Error at line: {expr.lineNumber}. Unary 'NOT' expects a boolean operand. Found: '{right}'"),
                 TokenType.INCREMENT => right switch
                 {
-                    int rightInt => HandleIntegerOverflow(rightInt, 1, "+"),
-                    _ => throw new Exception("Can only use increment operator on integers.")
+                    int rightInt => HandleIntegerOverflow(rightInt, 1, "+", expr.lineNumber),
+                    _ => throw new Exception($"Error at line: {expr.lineNumber}. Can only use increment operator on integers.")
                 },
                 TokenType.DECREMENT => right switch
                 {
-                    int rightInt => HandleIntegerOverflow(rightInt, 1, "-"),
-                    _ => throw new Exception("Can only use decrement operator on integers.")
+                    int rightInt => HandleIntegerOverflow(rightInt, 1, "-", expr.lineNumber),
+                    _ => throw new Exception($"Error at line: {expr.lineNumber}. Can only use decrement operator on integers.")
                 },
-                _ => throw new Exception($"Unsupported unary operator {expr.Operator.Type}.")
+                _ => throw new Exception($"Error at line: {expr.lineNumber}. Unsupported unary operator {expr.Operator.Type}.")
             };
         }
 
@@ -423,14 +423,14 @@ namespace Interpreter
             return value;
         }
 
-        private object PerformOperation(object left, object right, string operation)
+        private object PerformOperation(object left, object right, string operation, int lineNumber)
         {
             // Debugging
             //Console.WriteLine($"Performing operation {operation} on {left} {left.GetType()} and {right} {right.GetType()}.");
 
             if (left is float leftFloat && right is float rightFloat)
             {
-                if (rightFloat == 0 && (operation == "/" || operation == "%")) throw new Exception("Error: Division by zero.");
+                if (rightFloat == 0 && (operation == "/" || operation == "%")) throw new Exception($"Error at line: {lineNumber}. Error: Division by zero.");
                 switch (operation)
                 {
                     case "+": return leftFloat + rightFloat;
@@ -448,12 +448,12 @@ namespace Interpreter
             }
             if (left is int leftInt && right is int rightInt)
             {
-                if (rightInt == 0 && (operation == "/" || operation == "%")) throw new Exception("Error: Division by zero.");
+                if (rightInt == 0 && (operation == "/" || operation == "%")) throw new Exception($"Error at line: {lineNumber}. Error: Division by zero.");
                 switch (operation)
                 {
-                    case "+": return HandleIntegerOverflow(leftInt, rightInt, operation);
-                    case "-": return HandleIntegerOverflow(leftInt, rightInt, operation);
-                    case "*": return HandleIntegerOverflow(leftInt, rightInt, operation);
+                    case "+": return HandleIntegerOverflow(leftInt, rightInt, operation, lineNumber);
+                    case "-": return HandleIntegerOverflow(leftInt, rightInt, operation, lineNumber);
+                    case "*": return HandleIntegerOverflow(leftInt, rightInt, operation, lineNumber);
                     case "/": return leftInt / rightInt;
                     case "%": return leftInt % rightInt;
                     case "==": return leftInt == rightInt;
@@ -478,24 +478,24 @@ namespace Interpreter
                 return operation == "==" ? leftBool == rightBool : leftBool != rightBool;
             }
 
-            throw new Exception($"Invalid operands for operation '{operation}'. Found: '{left}' and '{right}'.");
+            throw new Exception($"Error at line: {lineNumber}.Invalid operands for operation '{operation}'. Found: '{left}' and '{right}'.");
         }
 
         private void IncrementVariable(Variable variable)
         {
-            object value = context.GetVariable(variable.Name);
-            if (value is int intValue) context.SetVariable(variable.Name, HandleIntegerOverflow(intValue, 1, "+"));
-            else throw new EvaluatorException("Can only use increment operator on integers.");
+            object value = context.GetVariable(variable.Name, variable.lineNumber);
+            if (value is int intValue) context.SetVariable(variable.Name, HandleIntegerOverflow(intValue, 1, "+", variable.lineNumber), variable.lineNumber);
+            else throw new EvaluatorException($"Error at line: {variable.lineNumber}. Can only use increment operator on integers.");
         }
 
         private void DecrementVariable(Variable variable)
         {
-            object value = context.GetVariable(variable.Name);
-            if (value is int intValue) context.SetVariable(variable.Name, HandleIntegerOverflow(intValue, 1, "-"));
-            else throw new EvaluatorException("Can only use decrement operator on integers.");
+            object value = context.GetVariable(variable.Name, variable.lineNumber);
+            if (value is int intValue) context.SetVariable(variable.Name, HandleIntegerOverflow(intValue, 1, "-", variable.lineNumber), variable.lineNumber);
+            else throw new EvaluatorException($"Error at line: {variable.lineNumber}. Can only use decrement operator on integers.");
         }
 
-        private object HandleIntegerOverflow(int left, int right, string operation)
+        private object HandleIntegerOverflow(int left, int right, string operation, int lineNumber)
         {
             try
             {
@@ -509,11 +509,11 @@ namespace Interpreter
             }
             catch (OverflowException)
             {
-                throw new Exception("Error: Integer overflow.");
+                throw new Exception($"Error at line: {lineNumber}. Error: Integer overflow.");
             }
         }
 
-        private int ConvertToInt(object value)
+        private int ConvertToInt(object value, int lineNumber)
         {
             if (value is float floatValue)
             {
@@ -531,7 +531,7 @@ namespace Interpreter
                 }
                 else
                 {
-                    throw new Exception($"Cannot convert '{stringValue}' to int.");
+                    throw new Exception($"Error at line: {lineNumber}. Cannot convert '{stringValue}' to int.");
                 }
             }
             if (value is char charValue)

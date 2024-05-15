@@ -19,16 +19,23 @@ namespace Interpreter
         }
     }
 
-    public abstract class Statement : ASTNode { }
+    public abstract class Statement : ASTNode { 
+        public int lineNumber { get; }
+        protected Statement(int lineNumber){
+            this.lineNumber = lineNumber;
+        }
+    }
 
-    public class EmptyStatement : Statement { }
+    public class EmptyStatement : Statement { 
+        public EmptyStatement(int lineNumber) : base(lineNumber) { }
+    }
 
     public class DeclarationStatement : Statement
     {
         public TokenType Type { get; }
         public List<Variable> Variables { get; }
 
-        public DeclarationStatement(TokenType type, List<Variable> variables)
+        public DeclarationStatement(TokenType type, List<Variable> variables, int lineNumber) : base(lineNumber)
         {
             Type = type;
             Variables = variables;
@@ -41,7 +48,7 @@ namespace Interpreter
         public Token Operator { get; }
         public Expression Value { get; }
 
-        public AssignmentStatement(Variable variable, Token operatorToken, Expression value)
+        public AssignmentStatement(Variable variable, Token operatorToken, Expression value, int lineNumber) : base(lineNumber)
         {
             Variable = variable;
             Operator = operatorToken;
@@ -53,7 +60,7 @@ namespace Interpreter
     {
         public Variable Variable { get; }
 
-        public PostIncrementStatement(Variable variable)
+        public PostIncrementStatement(Variable variable, int lineNumber) : base(lineNumber)
         {
             Variable = variable;
         }
@@ -63,7 +70,7 @@ namespace Interpreter
     {
         public Variable Variable { get; }
 
-        public PostDecrementStatement(Variable variable)
+        public PostDecrementStatement(Variable variable, int lineNumber) : base(lineNumber)
         {
             Variable = variable;
         }
@@ -75,7 +82,7 @@ namespace Interpreter
         public List<Statement> ThenBranch { get; }
         public List<Statement> ElseBranch { get; }
 
-        public IfStatement(Expression condition, List<Statement> thenBranch, List<Statement>? elseBranch)
+        public IfStatement(Expression condition, List<Statement> thenBranch, List<Statement>? elseBranch, int lineNumber) : base(lineNumber)
         {
             Condition = condition;
             ThenBranch = thenBranch;
@@ -88,7 +95,7 @@ namespace Interpreter
         public Expression Condition { get; }
         public List<Statement> Body { get; }
 
-        public WhileStatement(Expression condition, List<Statement> body)
+        public WhileStatement(Expression condition, List<Statement> body, int lineNumber) : base(lineNumber)
         {
             Condition = condition;
             Body = body;
@@ -99,7 +106,7 @@ namespace Interpreter
     {
         public List<Expression> Expressions { get; }
 
-        public OutputStatement(List<Expression> expressions)
+        public OutputStatement(List<Expression> expressions, int lineNumber) : base(lineNumber)
         {
             Expressions = expressions;
         }
@@ -109,17 +116,27 @@ namespace Interpreter
     {
         public List<Variable> Variables { get; }
 
-        public InputStatement(List<Variable> variables)
+        public InputStatement(List<Variable> variables, int lineNumber) : base(lineNumber)
         {
             Variables = variables;
         }
     }
 
-    public class BreakStatement : Statement { }
+    public class BreakStatement : Statement { 
+        public BreakStatement(int lineNumber) : base(lineNumber) { }
+    }
 
-    public class ContinueStatement : Statement { }
+    public class ContinueStatement : Statement { 
+        public ContinueStatement(int lineNumber) : base(lineNumber) {}
+    }
 
-    public abstract class Expression : ASTNode { }
+    public abstract class Expression : ASTNode { 
+        public int lineNumber;
+
+        protected Expression(int lineNumber){
+            this.lineNumber = lineNumber;
+        }
+    }
 
     public class BinaryExpression : Expression
     {
@@ -127,7 +144,7 @@ namespace Interpreter
         public Token Operator { get; }
         public Expression Right { get; }
 
-        public BinaryExpression(Expression left, Token operatorToken, Expression right)
+        public BinaryExpression(Expression left, Token operatorToken, Expression right, int lineNumber) : base(lineNumber)
         {
             Left = left;
             Operator = operatorToken;
@@ -140,7 +157,7 @@ namespace Interpreter
         public Token Operator { get; }
         public Expression Right { get; }
 
-        public UnaryExpression(Token operatorToken, Expression right)
+        public UnaryExpression(Token operatorToken, Expression right, int lineNumber) : base(lineNumber)
         {
             Operator = operatorToken;
             Right = right;
@@ -151,7 +168,7 @@ namespace Interpreter
     {
         public object Value { get; }
 
-        public LiteralExpression(object value)
+        public LiteralExpression(object value, int lineNumber) : base(lineNumber)
         {
             Value = value;
         }
@@ -161,7 +178,7 @@ namespace Interpreter
     {
         public string Name { get; }
 
-        public VariableExpression(string name)
+        public VariableExpression(string name, int lineNumber) : base(lineNumber)
         {
             Name = name;
         }
@@ -170,10 +187,12 @@ namespace Interpreter
     {
         public string Name { get; }
         public Expression? Initializer { get; }
+        public int lineNumber { get; }
 
-        public Variable(string name, Expression? initializer = null)
+        public Variable(string name, int lineNumber, Expression? initializer = null)
         {
             Name = name;
+            this.lineNumber = lineNumber;
             Initializer = initializer;
         }
     }
@@ -184,7 +203,7 @@ namespace Interpreter
         public Token Operator { get; }
         public Expression Value { get; }
 
-        public AssignmentExpression(Variable variable, Token operatorToken, Expression value)
+        public AssignmentExpression(Variable variable, Token operatorToken, Expression value, int lineNumber) : base(lineNumber)
         {
             Variable = variable;
             Operator = operatorToken;
@@ -198,7 +217,7 @@ namespace Interpreter
         public Token Operator { get; }
         public Expression Right { get; }
 
-        public LogicalExpression(Expression left, Token operatorToken, Expression right)
+        public LogicalExpression(Expression left, Token operatorToken, Expression right, int lineNumber) : base(lineNumber)
         {
             Left = left;
             Operator = operatorToken;
@@ -210,7 +229,7 @@ namespace Interpreter
     {
         public Expression Expression { get; }
 
-        public GroupingExpression(Expression expression)
+        public GroupingExpression(Expression expression, int lineNumber) : base(lineNumber)
         {
             Expression = expression;
         }
@@ -221,7 +240,7 @@ namespace Interpreter
         public string FunctionName { get; }
         public Expression Argument { get; }
 
-        protected FunctionCallExpression(string functionName, Expression argument)
+        protected FunctionCallExpression(string functionName, Expression argument, int lineNumber) : base(lineNumber)
         {
             FunctionName = functionName;
             Argument = argument;
@@ -230,31 +249,31 @@ namespace Interpreter
 
     public class CeilExpression : FunctionCallExpression
     {
-        public CeilExpression(Expression argument) : base("CEIL", argument) { }
+        public CeilExpression(Expression argument, int lineNumber) : base("CEIL", argument, lineNumber) { }
     }
 
     public class FloorExpression : FunctionCallExpression
     {
-        public FloorExpression(Expression argument) : base("FLOOR", argument) { }
+        public FloorExpression(Expression argument, int lineNumber) : base("FLOOR", argument, lineNumber) { }
     }
 
     public class ToStringExpression : FunctionCallExpression
     {
-        public ToStringExpression(Expression argument) : base("TOSTRING", argument) { }
+        public ToStringExpression(Expression argument, int lineNumber) : base("TOSTRING", argument, lineNumber) { }
     }
 
     public class ToFloatExpression : FunctionCallExpression
     {
-        public ToFloatExpression(Expression argument) : base("TOFLOAT", argument) { }
+        public ToFloatExpression(Expression argument, int lineNumber) : base("TOFLOAT", argument, lineNumber) { }
     }
 
     public class ToIntExpression : FunctionCallExpression
     {
-        public ToIntExpression(Expression argument) : base("TOINT", argument) { }
+        public ToIntExpression(Expression argument, int lineNumber) : base("TOINT", argument, lineNumber) { }
     }
 
     public class TypeExpression : FunctionCallExpression
     {
-        public TypeExpression(Expression argument) : base("TYPE", argument) { }
+        public TypeExpression(Expression argument, int lineNumber) : base("TYPE", argument, lineNumber) { }
     }
 }
